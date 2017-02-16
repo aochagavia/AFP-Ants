@@ -123,7 +123,7 @@ data Ant = Ant
    }
 
 instance Show Ant where
-   show a = concat $ intersperse ", "
+   show a = intercalate ", "
       [ show (antColor a) ++ " ant of id " ++ show (antId a)
       , "dir " ++ show (antDirection a)
       , "food " ++ if antHasFood a then "1" else "0"
@@ -329,7 +329,7 @@ step :: (Int, Maybe Pos) -> Sim ()
 step (_, Nothing)  = return ()
 step (i, Just pos) =
    do cell <- cellAt pos
-      case (antInCell cell) of
+      case antInCell cell of
          Nothing -> return ()
          Just ant
             | antResting ant > 0 || antId ant /= i ->
