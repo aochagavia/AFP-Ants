@@ -9,13 +9,15 @@ maintainer:          example@example.com
 copyright:           2017 Author name here
 category:            Web
 build-type:          Simple
-extra-source-files:  README.md
 cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
   exposed-modules:     Lib
   build-depends:       base >= 4.7 && < 5
+                     , transformers
+                     , array
+                     , containers
   default-language:    Haskell2010
 
 executable FunctionalAnts-exe

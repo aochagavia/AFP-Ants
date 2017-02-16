@@ -1,6 +1,8 @@
 module Lib
-    ( someFunc
+    ( genProgram
     ) where
 
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
+import Simulator
+
+genProgram :: IO ()
+genProgram = putStrLn "Hello world"
