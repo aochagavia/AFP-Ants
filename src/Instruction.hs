@@ -20,8 +20,8 @@ data SenseDir
     deriving Show
 
 data LeftOrRight
-    = IsLeft
-    | IsRight
+    = Left
+    | Right
     deriving Show
 
 data Condition

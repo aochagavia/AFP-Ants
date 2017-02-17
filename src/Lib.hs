@@ -2,10 +2,11 @@ module Lib
     ( genProgram
     ) where
 
-import Simulator
+import Prelude hiding (Left, Right)
+import Instruction
 
 genProgram :: IO ()
-genProgram = putStrLn "Hello world"
+genProgram = putStr $ unlines $ map show defaultProgram -- "Hello world"
 
 defaultProgram :: [Instruction]
 defaultProgram = [ Sense Ahead 1 3 Food -- state 0: [SEARCH] is there food in front of me?
@@ -25,3 +26,6 @@ defaultProgram = [ Sense Ahead 1 3 Food -- state 0: [SEARCH] is there food in fr
                  , Turn Right 8 -- state 14: turn right and return to state 8
                  , Move 8 11 -- state 15: ...or move forward and return to state 8
                  ]
+
+-- switch :: [(SenseDir, Condition)] -> [[Instruction]] -> [Instruction] -> [Instruction]
+-- switch sense_conditions branches other = [Sense sense_dir branch other | (sense_dir, condition) <- sense_conditions, branch < branches]
