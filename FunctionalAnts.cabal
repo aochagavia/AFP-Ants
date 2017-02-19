@@ -16,10 +16,18 @@ library
   exposed-modules:     Lib
                      , Instruction
                      , Simulator
+                     , Simulator.GamePlay
+                     , Simulator.Options
+                     , Simulator.ReadWorld
+                     , Simulator.ReadInstructions
+                     , Simulator.Runner
+                     , Worlds
+  other-modules:       MultilineStrings
   build-depends:       base >= 4.7 && < 5
                      , transformers
                      , array
                      , containers
+                     , template-haskell
   default-language:    Haskell2010
 
 executable FunctionalAnts-exe

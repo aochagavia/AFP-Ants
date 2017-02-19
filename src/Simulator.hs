@@ -6,6 +6,9 @@
 
 module Simulator where
 
+import Instruction
+
+import Prelude hiding (Left, Right)
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.State.Lazy
@@ -86,19 +89,15 @@ adjacentCell p = posPlus p . f
    posPlus :: Pos -> Pos -> Pos
    posPlus p1 p2 = Pos { posX = posX p1 + posX p2, posY = posY p1 + posY p2 }
 
-data LeftOrRight = IsLeft | IsRight deriving Show
-
 turn :: LeftOrRight -> Dir -> Dir
-turn IsLeft  d = (d+5) `mod` 6
-turn IsRight d = (d+1) `mod` 6
-
-data SenseDir = Here | Ahead | LeftAhead | RightAhead deriving Show
+turn Left  d = (d+5) `mod` 6
+turn Right d = (d+1) `mod` 6
 
 sensedCell :: Pos -> Dir -> SenseDir -> Pos
 sensedCell p _ Here       = p
 sensedCell p d Ahead      = adjacentCell p d
-sensedCell p d LeftAhead  = adjacentCell p (turn IsLeft d)
-sensedCell p d RightAhead = adjacentCell p (turn IsRight d)
+sensedCell p d LeftAhead  = adjacentCell p (turn Left d)
+sensedCell p d RightAhead = adjacentCell p (turn Right d)
 
 ------------------------------------------------------------------
 -- 2.2 Biology
@@ -123,7 +122,7 @@ data Ant = Ant
    }
 
 instance Show Ant where
-   show a = intercalate ", "
+   show a = concat $ intersperse ", "
       [ show (antColor a) ++ " ant of id " ++ show (antId a)
       , "dir " ++ show (antDirection a)
       , "food " ++ if antHasFood a then "1" else "0"
@@ -198,8 +197,7 @@ showCell (p, cell)
 ------------------------------------------------------------------
 -- 2.5 Chemistry
 
-type MarkerNumber = Int -- 0..5
-type Markers      = Int8
+type Markers = Int8
 
 noMarkers :: Markers
 noMarkers = 0
@@ -226,9 +224,6 @@ clearMarkerAt c m cell =
 ------------------------------------------------------------------
 -- 2.6 Phenomenology
 
-data Condition = Friend | Foe | FriendWithFood | FoeWithFood | Food | Rock | Marker MarkerNumber | FoeMarker | Home | FoeHome
-   deriving Show
-
 cellMatches :: Cell -> Condition -> AntColor -> Bool
 cellMatches cell cond c =
    case (cond, antInCell cell) of
@@ -246,19 +241,6 @@ cellMatches cell cond c =
 
 ------------------------------------------------------------------
 -- 2.7 Neurology
-
-type AntState = Int
-
-data Instruction
-   = Sense SenseDir AntState AntState Condition
-   | Mark MarkerNumber AntState
-   | Unmark MarkerNumber AntState
-   | PickUp AntState AntState
-   | Drop AntState
-   | Turn LeftOrRight AntState
-   | Move AntState AntState
-   | Flip Int AntState AntState
- deriving Show
 
 getInstruction :: AntColor -> AntState -> Sim Instruction
 getInstruction c st =
@@ -329,7 +311,7 @@ step :: (Int, Maybe Pos) -> Sim ()
 step (_, Nothing)  = return ()
 step (i, Just pos) =
    do cell <- cellAt pos
-      case antInCell cell of
+      case (antInCell cell) of
          Nothing -> return ()
          Just ant
             | antResting ant > 0 || antId ant /= i ->

@@ -1,2 +1,8 @@
+import qualified Worlds
+
 main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+main = definedWorlds
+
+definedWorlds :: IO ()
+definedWorlds = sequence_ worlds
+    where worlds = [Worlds.sample0]
