@@ -280,7 +280,6 @@ checkForSurroundedAntAt p =
                      changeCellAt (addFood $ 3 + if antHasFood ant then 1 else 0) p
                      cell <- cellAt p
                      scoreKill ant cell
-                     setFoodAtPos (food cell) p
 
 checkForSurroundedAnts :: Pos -> Sim ()
 checkForSurroundedAnts p =
@@ -348,7 +347,6 @@ doInstruction pos cell ant instruction =
                  changeAnt (setState st2)
          | otherwise ->
               do scorePickup ant cell
-                 setFoodAtPos (food cell - 1) pos
                  return $
                     addFood (-1) .
                     changeAnt (setState st1 . setHasFood True)
@@ -356,7 +354,6 @@ doInstruction pos cell ant instruction =
       Drop st
          | antHasFood ant ->
               do scoreDrop ant cell
-                 setFoodAtPos (food cell) pos
                  return $
                     addFood 1 .
                     changeAnt (setState st . setHasFood False)
@@ -409,8 +406,6 @@ data FoodAdmin = FoodAdmin
    , redScore     :: Int
    , blackCarried :: Int
    , redCarried   :: Int
-   , remaining    :: Int
-   , locations    :: S.Set Pos
    }
 
 changeFoodAdmin :: (FoodAdmin -> FoodAdmin) -> Sim ()
@@ -418,10 +413,10 @@ changeFoodAdmin f =
    modify (\s -> s { foodAdmin = f (foodAdmin s) })
 
 noFood :: FoodAdmin
-noFood = FoodAdmin 0 0 0 0 0 S.empty
+noFood = FoodAdmin 0 0 0 0
 
 changeScore :: Maybe AntColor -> (Int -> Int) -> FoodAdmin -> FoodAdmin
-changeScore Nothing      f score = score { remaining  = f (remaining score)}
+changeScore Nothing      f score = score
 changeScore (Just Red)   f score = score { redScore   = f (redScore score) }
 changeScore (Just Black) f score = score { blackScore = f (blackScore score) }
 
@@ -446,11 +441,6 @@ scoreKill ant cell =
    changeFoodAdmin ( changeCarried (antColor ant) (if antHasFood ant then (\x -> x-1) else id)
                    . changeScore (anthill cell) (if antHasFood ant then (+4) else (+3))
                    )
-
-setFoodAtPos :: Int -> Pos -> Sim ()
-setFoodAtPos i pos =
-   changeFoodAdmin (\s -> s { locations = if i==0 then S.delete pos (locations s)
-                                                  else S.insert pos (locations s)})
 
 ------------------------------------------------------------------
 -- Ant Positions

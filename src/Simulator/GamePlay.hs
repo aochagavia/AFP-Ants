@@ -10,7 +10,6 @@ import Data.Array.IO
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.State.Lazy
-import qualified Data.Set as S
 
 makeGameState :: Options -> IO GameState
 makeGameState options =
@@ -18,7 +17,7 @@ makeGameState options =
           redInstr   = getRedInstructions options
           blackInstr = getBlackInstructions options
 
-      (pm, foodPos, foodParticles) <- populateWorld theWorld
+      pm <- populateWorld theWorld
 
       return $ GameState
          { world             = theWorld
@@ -27,25 +26,25 @@ makeGameState options =
          , antPositions      = pm
          , randoms           = randomStream (getSeed options)
          , roundNumber       = 0
-         , foodAdmin         = noFood { remaining = foodParticles, locations = foodPos }
+         , foodAdmin         = noFood
          }
 
-populateWorld :: World -> IO (AntPositions, S.Set Pos, Int)
+populateWorld :: World -> IO AntPositions
 populateWorld theWorld =
    do list <- getAssocs theWorld
-      (nrOfAnts, pm, foodSet, nrOfFood) <- foldM op (0, [], S.empty, 0) list
+      (nrOfAnts, pm) <- foldM op (0, []) list
       arr <- newListArray (0, nrOfAnts - 1) (reverse pm)
-      return (arr, foodSet, nrOfFood)
+      return arr
  where
-   op this@(i, pm, fm, f) (pos, cell)
-      | food cell > 0 = return (i, pm, S.insert pos fm, f + food cell)
+   op this@(i, pm) (pos, cell)
+      | food cell > 0 = return (i, pm)
       | otherwise =
            case anthill cell of
               Nothing ->
                  return this
               Just c ->
                  do writeArray theWorld pos (cell { antInCell = Just (makeAnt i c) })
-                    return (i+1, Just pos : pm, fm, f)
+                    return (i+1, Just pos : pm)
 
 makeAnt :: Int -> AntColor -> Ant
 makeAnt i c = Ant
@@ -68,10 +67,3 @@ oneRound options =
             pm   <- gets antPositions
             list <- liftIO $ getAssocs pm
             mapM_ step list
-
-dumpRound :: Sim ()
-dumpRound =
-   do w     <- gets world
-      list  <- liftIO $ getAssocs w
-      i     <- gets roundNumber
-      liftIO $ putStrLn ((unlines $ ("After round " ++ show i ++ "...") : map showCell list))

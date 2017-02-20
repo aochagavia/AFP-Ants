@@ -9,5 +9,5 @@ main :: IO ()
 main = let red = defaultProgram
            black = defaultProgram
            world = Worlds.sample0
-           options = buildOptions <$> red <*> black <*> world
+           options = buildOptions <$> red <*> black <*> world <*> pure 10000
        in options >>= simulate
