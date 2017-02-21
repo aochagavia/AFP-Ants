@@ -1,6 +1,6 @@
 const ONE: u8 = 0b0000_0001;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct BitField8 {
     bits: u8
 }

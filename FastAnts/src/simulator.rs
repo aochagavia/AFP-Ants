@@ -1,4 +1,4 @@
-use std::mem;
+use std::{mem, usize};
 
 use ant::{Ant, AntColor, AntDirection};
 use instruction::{Condition, Instruction, SenseDir, TurnDir};
@@ -6,10 +6,10 @@ use util::{self, Rng};
 use world::{Cell, World};
 
 pub struct Simulator {
-    world: World,
+    pub world: World,
     red_instructions: Vec<Instruction>,
     black_instructions: Vec<Instruction>,
-    ants: Vec<usize>,
+    pub ants: Vec<usize>,
     rng: Rng,
     round_number: u32,
     max_rounds: u32,
@@ -43,16 +43,22 @@ impl Simulator {
         }
     }
 
-    pub fn one_round(&mut self) {
-        if self.round_number == self.max_rounds {
-            panic!("Max rounds reached");
-        }
+    fn one_round(&mut self) {
+        assert!(self.round_number < self.max_rounds);
 
         self.round_number += 1;
 
         // For each ant, run its current instruction
-        let ants = mem::replace(&mut self.ants, Vec::new());
-        for &ant_index in &ants {
+        let mut ants = mem::replace(&mut self.ants, Vec::new());
+        let mut position_updates = Vec::new();
+        for i in 0..ants.len() {
+            let ant_index = ants[i];
+
+            // Ignore dead ants
+            if ant_index == usize::MAX {
+                continue;
+            }
+
             // Get the corresponding instruction
             let instruction;
             {
@@ -70,7 +76,14 @@ impl Simulator {
                 };
             }
 
-            self.run_instruction(ant_index, instruction);
+            // An instruction generates position updates, which are processed afterwards
+            self.run_instruction(ant_index, instruction, &mut position_updates);
+            for &(old_position, new_position) in &position_updates {
+                *ants.iter_mut().find(|&&mut pos| pos == old_position).unwrap() = new_position;
+            }
+
+            // Clear the position updates
+            position_updates.clear();
         }
 
         // Restore ants to their original place
@@ -96,26 +109,28 @@ impl Simulator {
 
     pub fn partial_outcome(&self) -> Outcome {
         Outcome {
-            red: self.food_admin.red_score,
-            black: self.food_admin.black_score
+            red_score: self.food_admin.red_score,
+            red_alive: self.world.cells.iter().filter(|cell| cell.ant.as_ref().map(|ant| ant.color) == Some(AntColor::Red)).count() as u16,
+            black_score: self.food_admin.black_score,
+            black_alive: self.world.cells.iter().filter(|cell| cell.ant.as_ref().map(|ant| ant.color) == Some(AntColor::Black)).count() as u16,
         }
     }
 
-    fn run_instruction(&mut self, ant_index: usize, instruction: Instruction) {
+    fn run_instruction(&mut self, ant_position: usize, instruction: Instruction, position_updates: &mut Vec<(usize, usize)>) {
         // Run the instruction
         use self::Instruction::*;
         match instruction {
             Sense(dir, st1, st2, cond) => {
                 // This is safe because it is the first time we index
                 // WARNING: the borrow isn't tied to any lifetime!
-                let cell = unsafe { util::get_disjoint_mut(&mut self.world.cells, ant_index) };
+                let cell = unsafe { util::get_disjoint_mut(&mut self.world.cells, ant_position) };
                 let ant = cell.ant.as_mut().unwrap();
-                let sensed_index = sensed_index(self.world.width, ant_index, ant.direction, dir);
+                let sensed_position = sensed_position(self.world.width, ant_position, ant.direction, dir);
 
-                assert!(sensed_index != ant_index);
+                assert!(sensed_position != ant_position);
                 // This is safe because we just checked that the indices are disjoint
                 // WARNING: the borrow isn't tied to any lifetime!
-                let sensed_cell = unsafe { util::get_disjoint_mut(&mut self.world.cells, sensed_index) };
+                let sensed_cell = unsafe { util::get_disjoint_mut(&mut self.world.cells, sensed_position) };
                 let new_state = if eval_condition(&sensed_cell, &cond, ant.color) {
                     st1
                 } else {
@@ -125,7 +140,7 @@ impl Simulator {
                 ant.state = new_state
             }
             Mark(mark, new_state) => {
-                let cell = &mut self.world.cells[ant_index];
+                let cell = &mut self.world.cells[ant_position];
                 let ant = cell.ant.as_mut().unwrap();
                 if let AntColor::Red = ant.color {
                     cell.markers_red.set_bit(mark);
@@ -136,7 +151,7 @@ impl Simulator {
                 ant.state = new_state
             }
             Unmark(mark, new_state) => {
-                let cell = &mut self.world.cells[ant_index];
+                let cell = &mut self.world.cells[ant_position];
                 let ant = cell.ant.as_mut().unwrap();
                 if let AntColor::Red = ant.color {
                     cell.markers_red.clear(mark);
@@ -147,7 +162,7 @@ impl Simulator {
                 ant.state = new_state
             }
             PickUp(success_state, failure_state) => {
-                let cell = &mut self.world.cells[ant_index];
+                let cell = &mut self.world.cells[ant_position];
                 let ant = cell.ant.as_mut().unwrap();
                 if ant.has_food || cell.food == 0 {
                     ant.state = failure_state;
@@ -159,7 +174,7 @@ impl Simulator {
                 }
             }
             Drop(new_state) => {
-                let cell = &mut self.world.cells[ant_index];
+                let cell = &mut self.world.cells[ant_position];
                 let ant = cell.ant.as_mut().unwrap();
                 if ant.has_food {
                     self.food_admin.record_drop(ant.color, cell.anthill);
@@ -171,26 +186,28 @@ impl Simulator {
                 ant.state = new_state;
             }
             Turn(turn_direction, new_state) => {
-                let ant = self.world.cells[ant_index].ant.as_mut().unwrap();
+                let ant = self.world.cells[ant_position].ant.as_mut().unwrap();
                 ant.direction = turn(ant.direction, turn_direction);
                 ant.state = new_state;
             }
             Move(success_state, failure_state) => {
-                // This is safe because it is the first time we index
-                // WARNING: the borrow isn't tied to any lifetime!
-                let target_index;
+                let target_position;
                 {
-                    let cell = unsafe { util::get_disjoint_mut(&mut self.world.cells, ant_index) };
+                    // This is safe because it is the first time we index
+                    // WARNING: the borrow isn't tied to any lifetime!
+                    let cell = unsafe { util::get_disjoint_mut(&mut self.world.cells, ant_position) };
                     {
                         let ant = cell.ant.as_mut().unwrap();
-                        target_index = adjacent_index(self.world.width, ant_index, ant.direction);
+                        target_position = adjacent_position
+                    (self.world.width, ant_position, ant.direction);
                     }
-                    assert!(target_index != ant_index);
+                    assert!(target_position != ant_position);
 
                     // This is safe because we just checked that the indices are disjoint
                     // WARNING: the borrow isn't tied to any lifetime!
-                    let target_cell = unsafe { util::get_disjoint_mut(&mut self.world.cells, ant_index) };
+                    let target_cell = unsafe { util::get_disjoint_mut(&mut self.world.cells, target_position) };
 
+                    // Stop here if the target cell is occupied
                     if target_cell.is_rocky || target_cell.ant.is_some() {
                         let ant = cell.ant.as_mut().unwrap();
                         ant.state = failure_state;
@@ -200,10 +217,8 @@ impl Simulator {
                     // Remove ant from current place and add it to the new one
                     target_cell.ant = cell.ant.take();
 
-                    // Update the indices
-                    // Note: ants are always updated in order, from 0 onwards (therefore we need to mutate the index in place)
-                    let old_index = self.ants.iter_mut().find(|i| **i == ant_index).unwrap();
-                    *old_index = target_index;
+                    // Update the position of this ant
+                    position_updates.push((ant_position, target_position));
 
                     // Don't forget to rest and update the state
                     let ant = target_cell.ant.as_mut().unwrap();
@@ -211,57 +226,57 @@ impl Simulator {
                     ant.state = success_state;
                 }
 
-                self.kill_surrounded_ants(target_index);
+                self.kill_surrounded_ants(target_position, position_updates);
             }
             Flip(n, st1, st2) => {
-                let ant = self.world.cells[ant_index].ant.as_mut().unwrap();
+                let ant = self.world.cells[ant_position].ant.as_mut().unwrap();
                 let random = self.rng.random_int(n as usize);
                 let new_state = if random == 0 { st1 } else { st2 };
                 ant.state = new_state;
             }
         }
-
-
     }
 
-    fn kill_surrounded_ants(&mut self, index: usize) {
+    fn kill_surrounded_ants(&mut self, position: usize, position_updates: &mut Vec<(usize, usize)>) {
         // Check if this ant is surrounded
         let mut this_ant_dead = false;
-        if let Some(ref this_ant) = self.world.cells[index].ant {
-            this_ant_dead = self.adjacent_enemies(index, this_ant.color) >= 5;
+        if let Some(ref this_ant) = self.world.cells[position].ant {
+            this_ant_dead = self.adjacent_enemies(position, this_ant.color) >= 5;
         }
 
         if this_ant_dead {
-            self.handle_killed_ant(index);
+            self.handle_killed_ant(position, position_updates);
         }
 
         // For each adjacent cell, check if there is a surrounded ant
-        for direction in 0...5 {
-            let cell_index = adjacent_index(self.world.width, index, direction);
-            // Check if this ant is surrounded
+        for direction in AntDirection::all() {
+            let cell_position = adjacent_position(self.world.width, position, direction);
             let mut ant_dead = false;
-            if let Some(ref ant) = self.world.cells[cell_index].ant {
-                ant_dead = self.adjacent_enemies(cell_index, ant.color) >= 5;
+            if let Some(ref ant) = self.world.cells[cell_position].ant {
+                ant_dead = self.adjacent_enemies(cell_position, ant.color) >= 5;
             }
 
             if ant_dead {
-                self.handle_killed_ant(cell_index);
+                self.handle_killed_ant(cell_position, position_updates);
             }
         }
     }
 
-    fn handle_killed_ant(&mut self, index: usize) {
-        // Remove from cell and indices
-        let cell = &mut self.world.cells[index];
+    fn handle_killed_ant(&mut self, position: usize, position_updates: &mut Vec<(usize, usize)>) {
+        // Remove from cell'
+        let cell = &mut self.world.cells[position];
         let ant = cell.ant.take().unwrap();
-        self.ants.remove(index);
+
+        // Set the position to an invalid value
+        position_updates.push((position, usize::MAX));
 
         // Drop food
         self.food_admin.record_dead(ant, cell.anthill);
     }
 
-    fn adjacent_enemies(&self, index: usize, friend_color: AntColor) -> usize {
-        (0...5).map(|dir| adjacent_index(self.world.width, index, dir))
+    fn adjacent_enemies(&self, position: usize, friend_color: AntColor) -> usize {
+        AntDirection::all()
+               .map(|dir| adjacent_position(self.world.width, position, dir))
                .filter_map(|i| self.world.cells[i].ant.as_ref())
                .filter(|ant| ant.color == friend_color)
                .count()
@@ -270,8 +285,8 @@ impl Simulator {
 
 fn turn(ant_dir: AntDirection, turn_dir: TurnDir) -> AntDirection {
     match turn_dir {
-        TurnDir::Left  => (ant_dir + 5) % 6,
-        TurnDir::Right => (ant_dir + 1) % 6
+        TurnDir::Left  => ant_dir.turn_left(),
+        TurnDir::Right => ant_dir.turn_right()
     }
 }
 
@@ -292,24 +307,24 @@ fn eval_condition(cell: &Cell, cond: &Condition, color: AntColor) -> bool {
     }
 }
 
-fn adjacent_index(width: usize, i: usize, dir: AntDirection) -> usize {
+pub fn adjacent_position(width: usize, i: usize, dir: AntDirection) -> usize {
     // Note: There is no out of bounds, since the cells of the perimeter are always rocky
 
     // FIXME: not sure whether this is correct
     let (x, y) = (i as isize % width as isize, i as isize / width as isize);
 
+    use self::AntDirection::*;
     let (dx, dy) = match dir {
-        0               => (1, 0),
-        1 if y % 2 == 0 => (0, 1),
-        1               => (1, 1),
-        2 if y % 2 == 0 => (-1, 1),
-        2               => (0, 1),
-        3               => (-1, 0),
-        4 if y % 2 == 0 => (-1, -1),
-        4               => (0, -1),
-        5 if y % 2 == 0 => (0, -1),
-        5               => (1, -1),
-        n               => panic!("Invalid ant direction: {}", n)
+        Right                   => (1, 0),
+        DownRight if y % 2 == 0 => (0, 1),
+        DownRight               => (1, 1),
+        DownLeft  if y % 2 == 0 => (-1, 1),
+        DownLeft                => (0, 1),
+        Left                    => (-1, 0),
+        UpLeft    if y % 2 == 0 => (-1, -1),
+        UpLeft                  => (0, -1),
+        UpRight   if y % 2 == 0 => (0, -1),
+        UpRight                 => (1, -1),
     };
 
     let new_x = x + dx;
@@ -319,13 +334,16 @@ fn adjacent_index(width: usize, i: usize, dir: AntDirection) -> usize {
     new_y as usize * width + new_x as usize
 }
 
-fn sensed_index(width: usize, ant_index: usize, ant_direction: u8, sense_direction: SenseDir) -> usize {
+fn sensed_position(width: usize, ant_index: usize, ant_direction: AntDirection, sense_direction: SenseDir) -> usize {
     use self::SenseDir::*;
     match sense_direction {
         Here       => ant_index,
-        Ahead      => adjacent_index(width, ant_index, ant_direction),
-        LeftAhead  => adjacent_index(width, ant_index, turn(ant_direction, TurnDir::Left)),
-        RightAhead => adjacent_index(width, ant_index, turn(ant_direction, TurnDir::Right))
+        Ahead      => adjacent_position
+    (width, ant_index, ant_direction),
+        LeftAhead  => adjacent_position
+    (width, ant_index, turn(ant_direction, TurnDir::Left)),
+        RightAhead => adjacent_position
+    (width, ant_index, turn(ant_direction, TurnDir::Right))
     }
 }
 
@@ -389,7 +407,10 @@ impl FoodAdmin {
     }
 }
 
+#[derive(Debug)]
 pub struct Outcome {
-    pub red: u32,
-    pub black: u32
+    pub red_score: u32,
+    pub red_alive: u16,
+    pub black_score: u32,
+    pub black_alive: u16
 }
