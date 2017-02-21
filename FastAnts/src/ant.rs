@@ -1,3 +1,5 @@
+use instruction::TurnDir;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AntColor {
     Red,
@@ -41,12 +43,11 @@ impl AntDirection {
         (0...5).map(AntDirection::from_u8)
     }
 
-    pub fn turn_left(self) -> AntDirection {
-        AntDirection::from_u8((self as u8 + 5))
-    }
-
-    pub fn turn_right(self) -> AntDirection {
-        AntDirection::from_u8((self as u8 + 1) % 6)
+    pub fn turn(self, turn_dir: TurnDir) -> AntDirection {
+        match turn_dir {
+            TurnDir::Left  => AntDirection::from_u8((self as u8 + 5)),
+            TurnDir::Right => AntDirection::from_u8((self as u8 + 1) % 6)
+        }
     }
 }
 

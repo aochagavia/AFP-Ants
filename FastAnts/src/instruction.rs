@@ -1,6 +1,7 @@
 use std::io::BufRead;
 
-use ant::AntState;
+use ant::{AntColor, AntState};
+use world::Cell;
 
 pub type MarkerNumber = u8; // 0..5
 pub type InvChance = u16; // 1.. (1 / 1 == 100%, 1 / 2 == 50%, 1 / 3 == 33%)
@@ -43,6 +44,25 @@ pub enum Condition {
     FoeMarker,
     Home,
     FoeHome
+}
+
+impl Condition {
+    pub fn eval(&self, cell: &Cell, color: AntColor) -> bool {
+        use self::Condition::*;
+        match (*self, &cell.ant) {
+            (Rock          , _             ) => cell.is_rocky,
+            (Food          , _             ) => cell.food > 0,
+            (Home          , _             ) => cell.anthill == Some(color),
+            (FoeHome       , _             ) => cell.anthill == Some(color.enemy()),
+            (Marker(i)     , _             ) => cell.markers(color).is_set(i),
+            (FoeMarker     , _             ) => cell.markers(color.enemy()).any(),
+            (_             , &None         ) => false,
+            (Friend        , &Some(ref ant)) => ant.color == color,
+            (Foe           , &Some(ref ant)) => ant.color != color,
+            (FriendWithFood, &Some(ref ant)) => ant.color == color && ant.has_food,
+            (FoeWithFood   , &Some(ref ant)) => ant.color != color && ant.has_food,
+        }
+    }
 }
 
 pub fn parse<R>(reader: R) -> Vec<Instruction>

@@ -47,8 +47,15 @@ fn test_adjacent_position() {
 fn test_create_simulator() {
     let world = sample0();
     let simulator = Simulator::new(world, ant1(), ant1());
-    simulator.check_asc_order();
     assert_eq!(simulator.ants.len(), 182);
+
+    // The ids are stored in ascending order in the positions vector
+    let get_id = |i: usize| simulator.world.cells[i].ant.as_ref().unwrap().id;
+    let mut prev_id = get_id(simulator.ants[0]);
+    for &ant in &simulator.ants[1..] {
+        assert!(get_id(ant) > prev_id);
+        prev_id = get_id(ant);
+    }
 }
 
 #[test]
@@ -58,6 +65,6 @@ fn test_run_simulator() {
     let mut simulator = Simulator::new(world, instr.clone(), instr);
     assert_eq!(simulator.world.count_ants(), 182);
     let outcome = simulator.run_rounds(10_000);
-    assert_eq!(outcome.red, 0);
-    assert_eq!(outcome.black, 7);
+    assert_eq!(outcome.red_score, 0);
+    assert_eq!(outcome.black_score, 7);
 }

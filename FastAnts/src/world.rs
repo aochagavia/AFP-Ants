@@ -7,7 +7,9 @@ use util::BitField8;
 pub struct World {
     pub cells: Vec<Cell>,
     pub width: usize,
-    pub height: usize
+    pub height: usize,
+    red_anthill: Vec<usize>,
+    black_anthill: Vec<usize>
 }
 
 impl World {
@@ -36,7 +38,38 @@ impl World {
             cells.extend(words.map(Cell::parse));
         }
 
-        World { width, height, cells }
+        World { width, height, cells, red_anthill: Vec::new(), black_anthill: Vec::new() }
+    }
+
+    // Add the ants to the world and return a vector containing their indices in ascending order of id
+    pub fn populate(&mut self) -> Vec<usize> {
+        let mut ants = Vec::new();
+
+        let mut ant_id = 0;
+        for (i, cell) in self.cells.iter_mut().enumerate() {
+            if let Some(color) = cell.anthill {
+                // Put ants on the anthills
+                cell.ant = Some(Ant::new(ant_id, color));
+                ants.push(i);
+                ant_id += 1;
+
+                // Save the coordinates of the anthill
+                match color {
+                    AntColor::Red => self.red_anthill.push(i),
+                    AntColor::Black => self.black_anthill.push(i)
+                }
+            }
+        }
+
+        ants
+    }
+
+    pub fn count_red_food(&self) -> u32 {
+        self.red_anthill.iter().map(|&i| self.cells[i].food as u32).sum()
+    }
+
+    pub fn count_black_food(&self) -> u32 {
+        self.black_anthill.iter().map(|&i| self.cells[i].food as u32).sum()
     }
 
     pub fn count_ants(&self) -> u32 {
