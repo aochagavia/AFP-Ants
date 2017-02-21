@@ -44,9 +44,8 @@ impl Simulator {
                 continue;
             }
 
-            // This extra scope is needed to appease the borrow checker
             let (state, color) = {
-                let ant = self.world.cells[ant_position].ant.as_mut().unwrap();
+                let ant = self.ant_mut(ant_position);
 
                 if ant.resting > 0 {
                     ant.resting -= 1;
@@ -100,7 +99,7 @@ impl Simulator {
 
     fn count_alive_ants(&self, color: AntColor) -> u16 {
         self.ants.iter().filter(|&&pos| pos != usize::MAX
-                                     && self.world.cells[pos].ant.as_ref().unwrap().color == color)
+                                     && self.ant(pos).color == color)
                         .count() as u16
     }
 
@@ -186,7 +185,7 @@ impl Simulator {
                 ant.state = new_state;
             }
             Turn(turn_direction, new_state) => {
-                let ant = self.world.cells[ant_pos].ant.as_mut().unwrap();
+                let ant = self.ant_mut(ant_pos);
                 ant.direction = ant.direction.turn(turn_direction);
                 ant.state = new_state;
             }
@@ -205,10 +204,8 @@ impl Simulator {
                     return;
                 }
 
-                // Take the ant from the current place
+                // Take the ant from the current place and put it in the target cell
                 let ant = self.world.cells[ant_pos].ant.take();
-
-                // Put it in the target cell
                 self.world.cells[target_pos].ant = ant;
 
                 // Generate a position update
@@ -224,10 +221,9 @@ impl Simulator {
                 self.kill_surrounded_ants(target_pos, position_updates);
             }
             Flip(n, st1, st2) => {
-                let ant = self.world.cells[ant_pos].ant.as_mut().unwrap();
                 let random = self.rng.random_int(n as usize);
                 let new_state = if random == 0 { st1 } else { st2 };
-                ant.state = new_state;
+                self.ant_mut(ant_pos).state = new_state;
             }
         }
     }
