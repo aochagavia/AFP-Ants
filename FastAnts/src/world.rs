@@ -103,6 +103,13 @@ impl Cell {
         }
     }
 
+    pub fn markers_mut(&mut self, color: AntColor) -> &mut BitField8 {
+        match color {
+            AntColor::Red => &mut self.markers_red,
+            AntColor::Black => &mut self.markers_black
+        }
+    }
+
     fn parse(word: &str) -> Cell {
         // The default cell
         let mut cell = Cell {

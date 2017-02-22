@@ -142,14 +142,9 @@ impl Simulator {
             }
             Mark(mark, new_state) => {
                 let cell = &mut self.world.cells[ant_pos];
-                let ant = cell.ant.as_mut().unwrap();
-                if let AntColor::Red = ant.color {
-                    cell.markers_red.set_bit(mark);
-                } else {
-                    cell.markers_black.set_bit(mark);
-                }
-
-                ant.state = new_state
+                let ant_color = cell.ant.as_ref().unwrap().color;
+                cell.markers_mut(ant_color).set_bit(mark);
+                cell.ant.as_mut().unwrap().state = new_state
             }
             Unmark(mark, new_state) => {
                 let cell = &mut self.world.cells[ant_pos];
@@ -263,7 +258,7 @@ impl Simulator {
         AntDirection::all()
                .map(|dir| adjacent_position(self.world.width, position, dir))
                .filter_map(|i| self.world.cells[i].ant.as_ref())
-               .filter(|ant| ant.color == friend_color)
+               .filter(|ant| ant.color != friend_color)
                .count()
     }
 }
