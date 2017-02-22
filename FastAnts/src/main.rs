@@ -31,6 +31,6 @@ fn main() {
     let world = test_data::sample0();
     let instr = test_data::default_program();
 
-    let simulator = Simulator::new(world, instr.clone(), instr);
-    println!("{:?}", simulator.run());
+    let mut simulator = Simulator::new(world, instr.clone(), instr);
+    println!("{:?}", simulator.run_rounds(100_000));
 }

@@ -10,9 +10,7 @@ pub struct Simulator {
     red_instructions: Vec<Instruction>,
     black_instructions: Vec<Instruction>,
     pub ants: Vec<usize>,
-    rng: Rng,
-    round_number: u32,
-    max_rounds: u32,
+    rng: Rng
 }
 
 impl Simulator {
@@ -24,16 +22,11 @@ impl Simulator {
             red_instructions,
             black_instructions,
             ants,
-            rng: Rng::new(12345),
-            round_number: 0,
-            max_rounds: 100_000,
+            rng: Rng::new(12345)
         }
     }
 
     fn one_round(&mut self) {
-        assert!(self.round_number < self.max_rounds);
-        self.round_number += 1;
-
         // For each ant, run its current instruction
         let mut position_updates = Vec::new();
         for i in 0..self.ants.len() {
@@ -72,12 +65,7 @@ impl Simulator {
     }
 
     pub fn run(mut self) -> Outcome {
-        while self.round_number < self.max_rounds {
-            self.one_round();
-        }
-
-        // Note that the outcome is no longer partial, since the simulation has ended
-        self.partial_outcome()
+        self.run_rounds(100_000)
     }
 
     pub fn run_rounds(&mut self, rounds: u32) -> Outcome {
