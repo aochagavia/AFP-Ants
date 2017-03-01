@@ -6,10 +6,10 @@ module Function (
     Condition(..),
     Instruction(..),
 
-    runParser,
-    start,
+    run,
     test,
 
+    start,
     ) where
 
 import Prelude hiding (Left, Right)
@@ -18,39 +18,56 @@ import qualified Data.Map as Map
 import qualified Instruction as In
 import Instruction hiding (Instruction(..))
 
-data FunctionOrInstruction = Fun Function | Ins Instruction deriving Show
-
-data Function = Function String Instruction deriving Show
-
 data Instruction
-    = Sense SenseDir FunctionOrInstruction FunctionOrInstruction Condition
-    | Mark MarkerNumber FunctionOrInstruction
-    | Unmark MarkerNumber FunctionOrInstruction
-    | PickUp FunctionOrInstruction FunctionOrInstruction
-    | Drop FunctionOrInstruction
-    | Turn LeftOrRight FunctionOrInstruction
-    | Move FunctionOrInstruction FunctionOrInstruction
-    | Flip InvChance FunctionOrInstruction FunctionOrInstruction
+    = Function String Instruction
+    | Sense SenseDir Instruction Instruction Condition
+    | Mark MarkerNumber Instruction
+    | Unmark MarkerNumber Instruction
+    | PickUp Instruction Instruction
+    | Drop Instruction
+    | Turn LeftOrRight Instruction
+    | Move Instruction Instruction
+    | Flip InvChance Instruction Instruction
     deriving Show
 
-type Environment = (AntState, Map.Map String AntState, [In.Instruction])
+run :: Instruction -> [In.Instruction]
+run ins = let (_, _, instructions) = parse ins (0, Map.empty) in instructions
 
-parse :: FunctionOrInstruction -> Environment -> (AntState, Environment)
-parse (Fun (Function name instr)) env@(x, map, ins) = case Map.lookup name map of
-                                                    Just state -> (state, env) -- No code added, ant state returned (goto)
-                                                    Nothing    -> let (x', env') = parse (Ins instr) (x, Map.insert name x' map, ins) in (x', env') -- Code added in the parse of the instruction, Goto added in the environment
-parse (Ins instr) (x, map, ins) = case instr of
-    Sense senseDir f1 f2 cond -> let ((f1', (x', map', ins')), (f2', env'')) = (parse f1 (x + 1, map, ins ++ [In.Sense senseDir f1' f2' cond]), parse f2 (x', map', ins')) in (x, env'')
-    Mark markNumber f         -> let (f', env') = parse f (x + 1, map, ins ++ [In.Mark markNumber f']) in (x, env')
-    Unmark markNumber f       -> let (f', env') = parse f (x + 1, map, ins ++ [In.Unmark markNumber f']) in (x, env')
-    PickUp f1 f2              -> let ((f1', (x', map', ins')), (f2', env'')) = (parse f1 (x + 1, map, ins ++ [In.PickUp f1' f2']), parse f2 (x', map', ins')) in (x, env'')
-    Drop f                    -> let (f', env') = parse f (x + 1, map, ins ++ [In.Drop f']) in (x, env')
-    Turn lorr f               -> let (f', env') = parse f (x + 1, map, ins ++ [In.Turn lorr f']) in (x, env')
-    Move f1 f2                -> let ((f1', (x', map', ins')), (f2', env'')) = (parse f1 (x + 1, map, ins ++ [In.Move f1' f2']), parse f2 (x', map', ins')) in (x, env'')
-    Flip invChance f1 f2      -> let ((f1', (x', map', ins')), (f2', env'')) = (parse f1 (x + 1, map, ins ++ [In.Flip invChance f1' f2']), parse f2 (x', map', ins')) in (x, env'')
+--       ...             Next add, Possible functioncalls       Called state, Updated functioncalls,   Add this code to output
+parse :: Instruction -> (AntState, Map.Map String AntState) -> (AntState,     Map.Map String AntState, [In.Instruction])
+-- functioncall
+parse (Function name instr)       state@(nextState, functioncalls) = case Map.lookup name functioncalls of
+                                                                          Just state -> (state, functioncalls, []) -- Function is already available -> no code added -> function state returned (the goto)
+                                                                          Nothing    -> parse instr (nextState, Map.insert name nextState functioncalls) -- Functioncall added to functioncalls -> code gets added in the parse of the instruction (the goto is now available in the environment)
+-- double call
+parse (Sense senseDir f1 f2 cond) state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = parse f1 (nextState + 1, functioncalls) in
+                                                                     let (callF2, functioncalls'', instructions') = parse f2 (nextState + 1 + length instructions, functioncalls') in
+                                                                         (nextState, functioncalls'', In.Sense senseDir callF1 callF2 cond : instructions ++ instructions')
+parse (PickUp f1 f2)              state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = parse f1 (nextState + 1, functioncalls) in
+                                                                     let (callF2, functioncalls'', instructions') = parse f2 (nextState + 1 + length instructions, functioncalls') in
+                                                                         (nextState, functioncalls'', In.PickUp callF1 callF2 : instructions ++ instructions')
+parse (Move f1 f2)                state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = parse f1 (nextState + 1, functioncalls) in
+                                                                     let (callF2, functioncalls'', instructions') = parse f2 (nextState + 1 + length instructions, functioncalls') in
+                                                                         (nextState, functioncalls'', In.Move callF1 callF2 : instructions ++ instructions')
+parse (Flip invChance f1 f2)      state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = parse f1 (nextState + 1, functioncalls) in
+                                                                     let (callF2, functioncalls'', instructions') = parse f2 (nextState + 1 + length instructions, functioncalls') in
+                                                                         (nextState, functioncalls'', In.Flip invChance callF1 callF2 : instructions ++ instructions')
+-- single call
+parse (Mark markNumber f)         state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = parse f (nextState + 1, functioncalls) in
+                                                                         (nextState, functioncalls', In.Mark markNumber call : instructions)
+parse (Unmark markNumber f)       state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = parse f (nextState + 1, functioncalls) in
+                                                                         (nextState, functioncalls', In.Unmark markNumber call : instructions)
+parse (Drop f)                    state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = parse f (nextState + 1, functioncalls) in
+                                                                         (nextState, functioncalls', In.Drop call : instructions)
+                                                                    --let (f', env') = parse f (x + 1, map, ins ++ [In.Drop f']) in (x, env')
+parse (Turn lorr f)               state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = parse f (nextState + 1, functioncalls) in
+                                                                         (nextState, functioncalls', In.Turn lorr call : instructions)
+                                                                    --let (f', env') = parse f (x + 1, map, ins ++ [In.Turn lorr f']) in (x, env')
 
-runParser :: FunctionOrInstruction -> [In.Instruction]
-runParser funOrIns = let (_, (_, _, instructions)) = parse funOrIns (0, Map.empty, []) in instructions
+
+test, test1 :: Instruction
+test = Function "test" (Move test1 test)
+test1 = Function "test1" (Drop test)
 
 {-
 The default program that is implemented recursively
@@ -74,27 +91,23 @@ defaultProgram' = [ Sense Ahead 1 3 Food -- state 0: [SEARCH] is there food in f
                   ]
 -}
 
-test, test1 :: FunctionOrInstruction
-test = Fun (Function "test" (Move test1 test))
-test1 = Fun (Function "test1" (Drop test))
+start :: Instruction
+start = Function "start" (Sense Ahead pickupFood search Food)
 
-start :: FunctionOrInstruction
-start = Fun (Function "start" (Sense Ahead pickupFood search Food))
+pickupFood :: Instruction
+pickupFood = Function "pickupFood" (Move (PickUp goHome start) start)
 
-pickupFood :: FunctionOrInstruction
-pickupFood = Fun (Function "pickupFood" (Move (Ins (PickUp goHome start)) start))
+search :: Instruction
+search = Function "search" (Flip 3 (Turn Left start) (Flip 2 (Turn Right start) (Move start search)))
 
-search :: FunctionOrInstruction
-search = Fun (Function "search" (Flip 3 (Ins (Turn Left start)) (Ins (Flip 2 (Ins (Turn Right start)) (Ins (Move start search))))))
+goHome :: Instruction
+goHome = Function "goHome" (Sense Ahead foundHome notHome Home)
 
-goHome :: FunctionOrInstruction
-goHome = Fun (Function "goHome" (Sense Ahead foundHome notHome Home))
+notHome :: Instruction
+notHome = Function "notHome" (Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome notHome)))
 
-notHome :: FunctionOrInstruction
-notHome = Fun (Function "notHome" (Flip 3 (Ins (Turn Left goHome)) (Ins (Flip 2 (Ins (Turn Right goHome)) (Ins (Move goHome notHome))))))
-
-foundHome :: FunctionOrInstruction
-foundHome = Fun (Function "foundHome" (Move (Ins (Drop start)) goHome))
+foundHome :: Instruction
+foundHome = Function "foundHome" (Move (Drop start) goHome)
 
 -- Idea: use a uniqSupply like Monad to get unique identifiers for each definition.
 -- Then define "defineAs" somehow.
