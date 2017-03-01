@@ -83,3 +83,22 @@ goHome = Sense Ahead foundHome (Flip 3 (Turn Left goHome) (Flip 2 (Turn Right go
 
 foundHome :: Instruction
 foundHome = Move (Drop start) goHome
+
+-- Idea: use a uniqSupply like Monad to get unique identifiers for each definition.
+-- Then define "defineAs" somehow.
+{-
+program = do
+    -- Definitions
+    start      <- typeGoto
+    pickupFood <- typeGoto
+    search     <- typeGoto
+    goHome     <- typeGoto
+    foundHome  <- typeGoto
+
+    -- Bodies
+    start      `defineAs` Sense Ahead pickupFood search Food
+    pickupFood `defineAs` Move (PickUp goHome start) start
+    search     `defineAs` Flip 3 (Turn Left start) (Flip 2 (Turn Right start) (Move start search))
+    goHome     `defineAs` Sense Ahead foundHome (Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome))) Home
+    foundHome  `defineAs` Move (Drop start) goHome
+-}
