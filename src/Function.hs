@@ -1,4 +1,4 @@
-module InstructionRecursive (
+module Function (
     MarkerNumber,
     InvChance,
     SenseDir(..),
@@ -8,6 +8,9 @@ module InstructionRecursive (
     ) where
 
 import Prelude hiding (Left, Right)
+
+import qualified Data.Map as Map
+import qualified Instruction as In
 
 type AntState = Int -- 0..9999
 type MarkerNumber = Int -- 0..5
@@ -38,16 +41,28 @@ data Condition
     | FoeHome
     deriving Show
 
+data FunctionOrInstruction = Fun Function | Ins Instruction deriving Show
+
+data Function = Function String Instruction deriving Show
+
 data Instruction
-    = Sense SenseDir Instruction Instruction Condition
-    | Mark MarkerNumber Instruction
-    | Unmark MarkerNumber Instruction
-    | PickUp Instruction Instruction
-    | Drop Instruction
-    | Turn LeftOrRight Instruction
-    | Move Instruction Instruction
-    | Flip InvChance Instruction Instruction
+    = Sense SenseDir FunctionOrInstruction FunctionOrInstruction Condition
+    | Mark MarkerNumber FunctionOrInstruction
+    | Unmark MarkerNumber FunctionOrInstruction
+    | PickUp FunctionOrInstruction FunctionOrInstruction
+    | Drop FunctionOrInstruction
+    | Turn LeftOrRight FunctionOrInstruction
+    | Move FunctionOrInstruction FunctionOrInstruction
+    | Flip InvChance FunctionOrInstruction FunctionOrInstruction
     deriving Show
+
+type Environment = (Int, Map.Map String Int, [In.Instruction])
+
+parse :: FunctionOrInstruction -> Environment -> (Int, Environment)
+parse (Fun (Function name instr)) env@(x, map, _) = case Map.lookup name map of
+                                                    Just state -> (state, env) -- No code added
+                                                    Nothing    -> parse (Ins instr) env -- Code added in the parse of the instruction
+parse (Ins instr) _ = undefined
 
 {-
 The default program that is implemented recursively
@@ -71,23 +86,23 @@ defaultProgram' = [ Sense Ahead 1 3 Food -- state 0: [SEARCH] is there food in f
                   ]
 -}
 
-start :: Instruction
-start = Sense Ahead pickupFood search Food
+start :: FunctionOrInstruction
+start = Fun (Function "start" (Sense Ahead start start Food)) -- FIXME: first call should be pickupFood second call should be search
 
-pickupFood :: Instruction
-pickupFood = Move (PickUp goHome start) start
-
-search :: Instruction
-search = Flip 3 (Turn Left start) (Flip 2 (Turn Right start) (Move start search))
-
-goHome :: Instruction
-goHome = Sense Ahead foundHome notHome Home
-
-notHome :: Instruction
-notHome = Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome notHome))
-
-foundHome :: Instruction
-foundHome = Move (Drop start) goHome
+--pickupFood :: FunctionOrInstruction
+--pickupFood = Fun Function "pickupFood" Move (PickUp goHome start) start
+--
+--search :: FunctionOrInstruction
+--search = Fun Function "search" Flip 3 (Turn Left start) (Flip 2 (Turn Right start) (Move start search))
+--
+--goHome :: FunctionOrInstruction
+--goHome = Fun Function "goHome" Sense Ahead foundHome notHome Home
+--
+--notHome :: FunctionOrInstruction
+--notHome = Fun Function "notHome" Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome notHome))
+--
+--foundHome :: FunctionOrInstruction
+--foundHome = Fun Function "foundHome" (Move (Drop start) goHome)
 
 -- Idea: use a uniqSupply like Monad to get unique identifiers for each definition.
 -- Then define "defineAs" somehow.
