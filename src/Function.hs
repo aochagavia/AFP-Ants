@@ -4,42 +4,19 @@ module Function (
     SenseDir(..),
     LeftOrRight(..),
     Condition(..),
-    Instruction(..)
+    Instruction(..),
+
+    runParser,
+    start,
+    test,
+
     ) where
 
 import Prelude hiding (Left, Right)
 
 import qualified Data.Map as Map
 import qualified Instruction as In
-
-type AntState = Int -- 0..9999
-type MarkerNumber = Int -- 0..5
-type InvChance = Int -- 1.. (1 / 1 == 100%, 1 / 2 == 50%, 1 / 3 == 33%)
-
-data SenseDir
-    = Here
-    | Ahead
-    | LeftAhead
-    | RightAhead
-    deriving Show
-
-data LeftOrRight
-    = Left
-    | Right
-    deriving Show
-
-data Condition
-    = Friend
-    | Foe
-    | FriendWithFood
-    | FoeWithFood
-    | Food
-    | Rock
-    | Marker MarkerNumber
-    | FoeMarker
-    | Home
-    | FoeHome
-    deriving Show
+import Instruction hiding (Instruction(..))
 
 data FunctionOrInstruction = Fun Function | Ins Instruction deriving Show
 
@@ -56,13 +33,24 @@ data Instruction
     | Flip InvChance FunctionOrInstruction FunctionOrInstruction
     deriving Show
 
-type Environment = (Int, Map.Map String Int, [In.Instruction])
+type Environment = (AntState, Map.Map String AntState, [In.Instruction])
 
-parse :: FunctionOrInstruction -> Environment -> (Int, Environment)
-parse (Fun (Function name instr)) env@(x, map, _) = case Map.lookup name map of
-                                                    Just state -> (state, env) -- No code added
-                                                    Nothing    -> parse (Ins instr) env -- Code added in the parse of the instruction
-parse (Ins instr) _ = undefined
+parse :: FunctionOrInstruction -> Environment -> (AntState, Environment)
+parse (Fun (Function name instr)) env@(x, map, ins) = case Map.lookup name map of
+                                                    Just state -> (state, env) -- No code added, ant state returned (goto)
+                                                    Nothing    -> let (x', env') = parse (Ins instr) (x, Map.insert name x' map, ins) in (x', env') -- Code added in the parse of the instruction, Goto added in the environment
+parse (Ins instr) (x, map, ins) = case instr of
+    Sense senseDir f1 f2 cond -> let ((f1', (x', map', ins')), (f2', env'')) = (parse f1 (x + 1, map, ins ++ [In.Sense senseDir f1' f2' cond]), parse f2 (x', map', ins')) in (x, env'')
+    Mark markNumber f         -> let (f', env') = parse f (x + 1, map, ins ++ [In.Mark markNumber f']) in (x, env')
+    Unmark markNumber f       -> let (f', env') = parse f (x + 1, map, ins ++ [In.Unmark markNumber f']) in (x, env')
+    PickUp f1 f2              -> let ((f1', (x', map', ins')), (f2', env'')) = (parse f1 (x + 1, map, ins ++ [In.PickUp f1' f2']), parse f2 (x', map', ins')) in (x, env'')
+    Drop f                    -> let (f', env') = parse f (x + 1, map, ins ++ [In.Drop f']) in (x, env')
+    Turn lorr f               -> let (f', env') = parse f (x + 1, map, ins ++ [In.Turn lorr f']) in (x, env')
+    Move f1 f2                -> let ((f1', (x', map', ins')), (f2', env'')) = (parse f1 (x + 1, map, ins ++ [In.Move f1' f2']), parse f2 (x', map', ins')) in (x, env'')
+    Flip invChance f1 f2      -> let ((f1', (x', map', ins')), (f2', env'')) = (parse f1 (x + 1, map, ins ++ [In.Flip invChance f1' f2']), parse f2 (x', map', ins')) in (x, env'')
+
+runParser :: FunctionOrInstruction -> [In.Instruction]
+runParser funOrIns = let (_, (_, _, instructions)) = parse funOrIns (0, Map.empty, []) in instructions
 
 {-
 The default program that is implemented recursively
@@ -85,6 +73,10 @@ defaultProgram' = [ Sense Ahead 1 3 Food -- state 0: [SEARCH] is there food in f
                   , Move 8 11 -- state 15: ...or move forward and return to state 8
                   ]
 -}
+
+test, test1 :: FunctionOrInstruction
+test = Fun (Function "test" (Move test1 test))
+test1 = Fun (Function "test1" (Drop test))
 
 start :: FunctionOrInstruction
 start = Fun (Function "start" (Sense Ahead pickupFood search Food))
