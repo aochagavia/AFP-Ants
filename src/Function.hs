@@ -87,22 +87,22 @@ defaultProgram' = [ Sense Ahead 1 3 Food -- state 0: [SEARCH] is there food in f
 -}
 
 start :: FunctionOrInstruction
-start = Fun (Function "start" (Sense Ahead start start Food)) -- FIXME: first call should be pickupFood second call should be search
+start = Fun (Function "start" (Sense Ahead pickupFood search Food))
 
---pickupFood :: FunctionOrInstruction
---pickupFood = Fun Function "pickupFood" Move (PickUp goHome start) start
---
---search :: FunctionOrInstruction
---search = Fun Function "search" Flip 3 (Turn Left start) (Flip 2 (Turn Right start) (Move start search))
---
---goHome :: FunctionOrInstruction
---goHome = Fun Function "goHome" Sense Ahead foundHome notHome Home
---
---notHome :: FunctionOrInstruction
---notHome = Fun Function "notHome" Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome notHome))
---
---foundHome :: FunctionOrInstruction
---foundHome = Fun Function "foundHome" (Move (Drop start) goHome)
+pickupFood :: FunctionOrInstruction
+pickupFood = Fun (Function "pickupFood" (Move (Ins (PickUp goHome start)) start))
+
+search :: FunctionOrInstruction
+search = Fun (Function "search" (Flip 3 (Ins (Turn Left start)) (Ins (Flip 2 (Ins (Turn Right start)) (Ins (Move start search))))))
+
+goHome :: FunctionOrInstruction
+goHome = Fun (Function "goHome" (Sense Ahead foundHome notHome Home))
+
+notHome :: FunctionOrInstruction
+notHome = Fun (Function "notHome" (Flip 3 (Ins (Turn Left goHome)) (Ins (Flip 2 (Ins (Turn Right goHome)) (Ins (Move goHome notHome))))))
+
+foundHome :: FunctionOrInstruction
+foundHome = Fun (Function "foundHome" (Move (Ins (Drop start)) goHome))
 
 -- Idea: use a uniqSupply like Monad to get unique identifiers for each definition.
 -- Then define "defineAs" somehow.
