@@ -3,8 +3,8 @@ module Language.Function where
 import Prelude hiding (Left, Right)
 import Control.Monad.State
 
-import Instruction (Condition(..), LeftOrRight(..), SenseDir(..))
 import Language.Fragment
+import Language.Instruction hiding (Instruction(..))
 
 -- A function requires an instruction, which is executed when the function ends
 type Function = Instruction -> State DSLState Instruction

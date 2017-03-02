@@ -8,9 +8,9 @@ import Prelude hiding (Left, Right)
 import Data.Array.IO (newListArray)
 
 import Simulator
-import Instruction
 
 import Language.Compiler (genCode, start)
+import Language.Instruction
 
 genProgram :: IO ()
 genProgram = putStr $ unlines $ map show defaultProgram'

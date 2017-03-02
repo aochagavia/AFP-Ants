@@ -1,4 +1,4 @@
-module Instruction (
+module Language.Instruction (
     AntState,
     MarkerNumber,
     InvChance,

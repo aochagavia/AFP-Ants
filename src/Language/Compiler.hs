@@ -13,8 +13,8 @@ module Language.Compiler (
 import Prelude hiding (Left, Right)
 
 import qualified Data.Map as Map
-import qualified Instruction as In
-import Instruction hiding (Instruction(..))
+import qualified Language.Instruction as In
+import Language.Instruction hiding (Instruction(..))
 
 data Instruction
     = Function String Instruction

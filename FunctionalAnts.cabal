@@ -14,11 +14,10 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Lib
-                     , Instruction
-                     , InstructionRecursive
                      , Language.Compiler
                      , Language.Fragment
                      , Language.Function
+                     , Language.Instruction
                      , Simulator
                      , Simulator.GamePlay
                      , Simulator.Options

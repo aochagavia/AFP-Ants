@@ -3,7 +3,7 @@ module Simulator.ReadInstructions (readInstructions) where
 import Prelude hiding (Left, Right)
 import Data.Char (toUpper, isDigit)
 import Data.Array.IO (newListArray)
-import Instruction
+import Language.Instruction
 import Simulator
 
 readInstructions :: String -> IO AntInstructions

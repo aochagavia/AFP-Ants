@@ -6,7 +6,7 @@
 
 module Simulator where
 
-import Instruction
+import Language.Instruction
 
 import Prelude hiding (Left, Right)
 import Control.Monad
