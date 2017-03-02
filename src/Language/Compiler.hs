@@ -8,11 +8,14 @@ module Language.Compiler (
 
     genCode,
     start,
+
+    optimize,
     ) where
 
 import Prelude hiding (Left, Right)
 
 import qualified Data.Map as Map
+import Data.Maybe (mapMaybe)
 import qualified Language.Instruction as In
 import Language.Instruction hiding (Instruction(..))
 
@@ -59,6 +62,38 @@ compile (Drop f)                    state@(nextState, functioncalls) = let (call
                                                                            (nextState, functioncalls', In.Drop call : instructions)
 compile (Turn lorr f)               state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = compile f (nextState + 1, functioncalls) in
                                                                            (nextState, functioncalls', In.Turn lorr call : instructions)
+
+-- Optimmizations
+optimize :: [In.Instruction] -> [In.Instruction]
+optimize instructions = mapMaybe inscompact instructions
+    where   filter (In.Sense senseDir trueState falseState condition)   = (trueState == falseState, trueState)
+            filter (In.Flip invChance chooseState otherState)           = (chooseState == otherState, chooseState)
+            filter _                                                    = (False, -1)
+
+            instructionreshuffle _ []     = []
+            instructionreshuffle n (i:is) = let (deadbranch, nextState) =  filter i in if deadbranch
+                then n:instructionreshuffle (n + 1) is
+                else n:instructionreshuffle n is
+
+            reshuffleamount = instructionreshuffle 0 instructions
+
+            -- actions that have two the same branches and no sideeffect can be savely removed
+            inscompact (In.Sense senseDir trueState falseState condition)  = if trueState == falseState
+                then Nothing
+                else Just $ In.Sense senseDir (newstate trueState) (newstate falseState) condition
+            inscompact (In.Flip invChance chooseState otherState)          = if chooseState == otherState
+                then Nothing
+                else Just $ In.Flip invChance (newstate chooseState) (newstate otherState)
+            -- actions can be called with two the same branches but never be deleted because of side effects
+            inscompact (In.PickUp trueState falseState)                    = Just $ In.PickUp (newstate trueState) (newstate falseState)
+            inscompact (In.Move trueState falseState)                      = Just $ In.Move (newstate trueState) (newstate falseState)
+            -- actions don't have the possibility to call the same branch on different conditions, never the less their goto has to be updated
+            inscompact (In.Mark markerNumber nextState)                    = Just $ In.Mark markerNumber (newstate nextState)
+            inscompact (In.Unmark markerNumber nextState)                  = Just $ In.Unmark markerNumber (newstate nextState)
+            inscompact (In.Drop nextState)                                 = Just $ In.Drop (newstate nextState)
+            inscompact (In.Turn lorr nextState)                            = Just $ In.Turn lorr (newstate nextState)
+            -- calculate newstate based on the shift of the called state
+            newstate nextState = nextState - (reshuffleamount !! nextState)
 
 {-
 The default program that is implemented recursively

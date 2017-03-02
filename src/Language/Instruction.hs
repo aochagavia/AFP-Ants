@@ -17,12 +17,12 @@ data SenseDir
     | Ahead
     | LeftAhead
     | RightAhead
-    deriving Show
+    deriving (Show, Eq)
 
 data LeftOrRight
     = Left
     | Right
-    deriving Show
+    deriving (Show, Eq)
 
 data Condition
     = Friend
@@ -35,7 +35,7 @@ data Condition
     | FoeMarker
     | Home
     | FoeHome
-    deriving Show
+    deriving (Show, Eq)
 
 data Instruction
     = Sense SenseDir AntState AntState Condition
@@ -46,4 +46,4 @@ data Instruction
     | Turn LeftOrRight AntState
     | Move AntState AntState
     | Flip InvChance AntState AntState
-    deriving Show
+    deriving (Show, Eq)
