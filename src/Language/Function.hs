@@ -25,9 +25,12 @@ sequenceF (f:fs) = \ret -> do
 
 -- Combine the functions in such a way that, at runtime, one of them is run randomly
 choose :: [Function] -> Function
-choose [] = error "cannot choose 0 functions"
-choose [f] = f
-choose count@(f:fs) nextIns = Flip (length count) (f nextIns) (choose fs nextIns) -- Flip in a fair way, 1 / number of possible choices
+choose [] _ = error "cannot choose 0 functions"
+choose [f] nextIns = f nextIns
+choose count@(f:fs) nextIns = do
+    chosen <- f nextIns
+    other <- choose fs nextIns
+    define $ Flip (length count) chosen other -- Flip in a fair way, 1 / number of possible choices
 
 -- Functions to make turning and sensing easier
 
