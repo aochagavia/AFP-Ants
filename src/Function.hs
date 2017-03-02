@@ -127,3 +127,26 @@ program = do
     goHome     `defineAs` Sense Ahead foundHome (Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome))) Home
     foundHome  `defineAs` Move (Drop start) goHome
 -}
+
+data Directions = LeftLeft | DirLeft | DirAhead | DirRight | RightRight | Back
+
+turn :: Directions -> Instruction -> Instruction
+turn LeftLeft nextIns = Turn Left (turn DirLeft nextIns)
+turn DirLeft nextIns = Turn Left nextIns
+turn DirAhead nextIns = nextIns
+turn DirRight nextIns = Turn Right nextIns
+turn RightRight nextIns = Turn Right (turn DirRight nextIns)
+turn Back nextIns = Turn Right (turn RightRight nextIns)
+
+senseDir :: Directions -> Condition -> Instruction -> Instruction -> Instruction
+senseDir LeftLeft cond trueIns falseIns = Turn Left (senseDir DirLeft cond (Turn Right trueIns) (Turn Right falseIns))
+senseDir DirLeft cond trueIns falseIns = Sense LeftAhead trueIns falseIns cond
+senseDir DirAhead cond trueIns falseIns = Sense Ahead trueIns falseIns cond
+senseDir DirRight cond trueIns falseIns = Sense RightAhead trueIns falseIns cond
+senseDir RightRight cond trueIns falseIns = Turn Right (senseDir DirRight cond (Turn Left trueIns) (Turn Left falseIns))
+senseDir Back cond trueIns falseIns = Turn Right (senseDir RightRight cond (Turn Left trueIns) (Turn Left falseIns))
+
+turnCond :: LeftOrRight -> Condition -> Instruction -> Instruction -> Instruction
+turnCond lorr cond trueIns falseIns = turnCond' 6
+    where   turnCond' 0 = falseIns
+            turnCond' n = Sense Ahead trueIns (Turn lorr (turnCond' (n - 1))) cond
