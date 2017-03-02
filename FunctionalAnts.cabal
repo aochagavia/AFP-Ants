@@ -15,6 +15,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Lib
                      , Language.Compiler
+                     , Language.Examples
                      , Language.Fragment
                      , Language.Function
                      , Language.Instruction

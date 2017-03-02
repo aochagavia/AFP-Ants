@@ -8,12 +8,10 @@ module Lib (
 import Prelude hiding (Left, Right)
 import Data.Array.IO (newListArray)
 
-import Debug.Trace
-
 import Simulator
 
-import Language.Fragment (genIR, program)
 import Language.Compiler (genCode, start)
+import qualified Language.Examples as E
 import Language.Instruction
 
 genProgram :: IO ()
@@ -28,9 +26,9 @@ compiledProgram = newListArray range (genCode start)
     where range = (0, length (genCode start) - 1)
 
 fragmentProgram :: IO AntInstructions
-fragmentProgram = newListArray range antsembly
-    where   antsembly = traceShowId $ genCode $ genIR program
-            range = (0, length antsembly - 1)
+fragmentProgram = let fragProg = E.fragmentProgram
+                      range = (0, length fragProg - 1)
+                  in newListArray range fragProg
 
 defaultProgram' :: [Instruction]
 defaultProgram' = [ Sense Ahead 1 3 Food -- state 0: [SEARCH] is there food in front of me?
