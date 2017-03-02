@@ -7,12 +7,14 @@ module Language.Compiler (
     Instruction(..),
 
     genCode,
+    genIR,
     start,
     ) where
 
 import Prelude hiding (Left, Right)
 
 import qualified Data.Map as Map
+import qualified Language.Fragment as F
 import qualified Language.Instruction as In
 import Language.Instruction hiding (Instruction(..))
 
@@ -27,6 +29,19 @@ data Instruction
     | Move Instruction Instruction
     | Flip InvChance Instruction Instruction
     deriving Show
+
+genIR :: F.Program -> Instruction
+genIR (F.Program entry frag) = parseIns (F.Goto entry)
+    where
+    parseIns (F.Sense senseDir trueIns falseIns cond) = Sense senseDir (parseIns trueIns) (parseIns falseIns) cond
+    parseIns (F.Mark markNum ins)                     = Mark markNum (parseIns ins)
+    parseIns (F.Unmark markerNum ins)                 = Unmark markerNum (parseIns ins)
+    parseIns (F.PickUp trueIns falseIns)              = PickUp (parseIns trueIns) (parseIns falseIns)
+    parseIns (F.Drop ins)                             = Drop (parseIns ins)
+    parseIns (F.Turn lorr ins)                        = Turn lorr (parseIns ins)
+    parseIns (F.Move trueIns falseIns)                = Move (parseIns trueIns) (parseIns falseIns)
+    parseIns (F.Flip invChance trueIns falseIns)      = Flip invChance (parseIns trueIns) (parseIns falseIns)
+    parseIns (F.Goto uid)                             = Function (show uid) (parseIns (frag Map.! uid))
 
 genCode :: Instruction -> [In.Instruction]
 genCode ins = let (_, _, instructions) = compile ins (0, Map.empty) in instructions

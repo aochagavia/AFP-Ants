@@ -5,8 +5,7 @@ module Language.Examples (
 import Prelude hiding (Either(..))
 
 import Control.Monad.State
-import Language.Build (genIR)
-import Language.Compiler (genCode)
+import Language.Compiler (genCode, genIR)
 import Language.Fragment
 import Language.Instruction hiding (Instruction(..))
 

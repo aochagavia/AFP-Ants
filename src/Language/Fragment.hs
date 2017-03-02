@@ -21,11 +21,10 @@ import Prelude hiding (Left, Right)
 import Control.Monad.State
 import Control.Monad.Identity
 
-import qualified Data.Map.Strict as Map
-import qualified Language.Compiler as Co
-import qualified Prelude as P
+import Language.Instruction hiding (Instruction(..))
 
-import Language.Compiler hiding (Instruction(..))
+import qualified Data.Map.Strict as Map
+import qualified Prelude as P
 
 data Instruction
     = Sense SenseDir Instruction Instruction Condition
@@ -38,7 +37,6 @@ data Instruction
     | Flip InvChance Instruction Instruction
     | Goto Int
     deriving Show
-
 
 type ProgramBuilder a = State DSLState a
 
