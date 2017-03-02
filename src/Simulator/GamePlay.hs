@@ -9,7 +9,7 @@ import Simulator.Options
 import Data.Array.IO
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Trans.State.Lazy
+import Control.Monad.State
 
 makeGameState :: Options -> IO GameState
 makeGameState options =
