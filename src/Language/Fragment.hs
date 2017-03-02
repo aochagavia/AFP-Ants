@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 module Language.Fragment (
     MarkerNumber,
     InvChance,
@@ -5,24 +7,25 @@ module Language.Fragment (
     LeftOrRight(..),
     Condition(..),
     Instruction(..),
-
-    DSLState,
+    DSLState(..),
+    Program(..),
+    ProgramBuilder,
+    ProgramBuildError(..),
+    buildProgram,
     declare,
     defineAs,
     define,
-
-    genIR,
-    program,
 ) where
 
-import Prelude hiding (Left, Right) -- FIXME
+import Prelude hiding (Left, Right)
 import Control.Monad.State
 import Control.Monad.Identity
 
 import qualified Data.Map.Strict as Map
+import qualified Language.Compiler as Co
+import qualified Prelude as P
 
 import Language.Compiler hiding (Instruction(..))
-import qualified Language.Compiler as Co
 
 data Instruction
     = Sense SenseDir Instruction Instruction Condition
@@ -36,85 +39,68 @@ data Instruction
     | Goto Int
     deriving Show
 
+
+type ProgramBuilder a = State DSLState a
+
 data DSLState = DSLState {
+    maybeEntryPoint :: Maybe Int,
     freshLabel :: Int,
     instructions :: Map.Map Int Instruction
 } deriving Show
 
-declare :: State DSLState Instruction
-declare = do (DSLState u is) <- get
-             put (DSLState (u+1) is)
-             return (Goto u)
+data Program = Program {
+    pEntryPoint :: Int,
+    pInstructions :: Map.Map Int Instruction
+}
 
-defineAs :: Instruction -> Instruction -> State DSLState ()
-defineAs (Goto d) i = do (DSLState u is) <- get
-                         put (DSLState u (Map.insert d i is))
+{- Basic building blocks -}
 
-define :: Instruction -> State DSLState Instruction
+declare :: ProgramBuilder Instruction
+declare = do state@(DSLState { freshLabel }) <- get
+             put (state { freshLabel = freshLabel + 1})
+             return (Goto freshLabel)
+
+defineAs :: Instruction -> Instruction -> ProgramBuilder ()
+defineAs (Goto d) i = do (state@DSLState { instructions }) <- get
+                         put (state { instructions = Map.insert d i instructions })
+
+define :: Instruction -> ProgramBuilder Instruction
 define i = do
     label <- declare
     label `defineAs` i
     return label
 
-program :: State DSLState ()
-program = do
-    -- Definitions
-    start      <- declare
-    pickupFood <- declare
-    search     <- declare
-    goHome     <- declare
-    notHome    <- declare
-    foundHome  <- declare
+setEntryPoint :: Instruction -> ProgramBuilder ()
+setEntryPoint (Goto i) = do
+    state@(DSLState entryPoint _ _) <- get
+    case entryPoint of
+        Just ep -> error "Attempt to replace entripoint" -- FIXME: should we use the Exception monad transformer instead of this?
+        Nothing -> put $ state { maybeEntryPoint = Just i }
 
-    -- Bodies
-    start      `defineAs` Sense Ahead pickupFood search Food
-    pickupFood `defineAs` Move (PickUp goHome start) start
-    search     `defineAs` Flip 3 (Turn Left start) (Flip 2 (Turn Right start) (Move start search))
-    goHome     `defineAs` Sense Ahead foundHome notHome Home
-    notHome    `defineAs` Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome notHome))
-    foundHome  `defineAs` Move (Drop start) goHome
+{- Turning the ProgramBuilder into a real Program -}
 
--- buildProgram program
+data ProgramBuildError
+    = MissingEntryPoint
+    | UndefinedLabel Int
 
-buildProgram :: State DSLState () -> Map.Map Int Instruction
-buildProgram p = instructions $ execState p (DSLState 0 Map.empty)
+instance Show ProgramBuildError where
+    show MissingEntryPoint  = "missing entry point"
+    show (UndefinedLabel x) = "there is a goto to label " ++ show x ++ ", but said label does not correspond to any instruction"
 
-genIR :: State DSLState () -> Co.Instruction
-genIR state = toIR fragments
-    where   fragments = buildProgram state
-            toIR frag = parseIns (Goto 0) -- Assuming fragment with uid 0 is entry point
-                where   parseIns (Sense senseDir trueIns falseIns cond) = Co.Sense senseDir (parseIns trueIns) (parseIns falseIns) cond
-                        parseIns (Mark markNum ins)                     = Co.Mark markNum (parseIns ins)
-                        parseIns (Unmark markerNum ins)                 = Co.Unmark markerNum (parseIns ins)
-                        parseIns (PickUp trueIns falseIns)              = Co.PickUp (parseIns trueIns) (parseIns falseIns)
-                        parseIns (Drop ins)                             = Co.Drop (parseIns ins)
-                        parseIns (Turn lorr ins)                        = Co.Turn lorr (parseIns ins)
-                        parseIns (Move trueIns falseIns)                = Co.Move (parseIns trueIns) (parseIns falseIns)
-                        parseIns (Flip invChance trueIns falseIns)      = Co.Flip invChance (parseIns trueIns) (parseIns falseIns)
-                        parseIns (Goto uid)                             = Co.Function (show uid) (parseIns (frag Map.! uid))
+buildProgram :: ProgramBuilder () -> Either ProgramBuildError Program
+buildProgram p = let (DSLState entry _ instrs) = execState p (DSLState Nothing 0 Map.empty)
+                 in case entry of
+                      Just ep -> checkProgram $ Program ep instrs
+                      Nothing -> P.Left MissingEntryPoint
 
---nameFragment :: Name -> AnonFragment -> Fragment
---nameFragment name (AnonFragment instrs) = Fragment name instrs
+{- Before returning the program, we better make sure it is properly defined -}
 
---forever :: Function -> State DSLState Instruction
---forever function = do
---    label <- declare
---    label `defineAs` Inline function label
---    return label
+checkProgram :: Program -> Either ProgramBuildError Program
+checkProgram = P.Right
 
-{-
-{- Example program -}
-program :: Program
-program = Program main []
+{- TODO, check:
 
-main :: Fragment
-main = nameFragment (Name "main") $ forever $ sequenceT instructions
-    where
-    instructions = [ walkUntilFoodFound
-                   , Function [ PickUp TEnd TEnd ]
-                   , turnAround
-                   , walkUntilBaseFound
-                   , Function [ Drop TEnd ]
-                   ]
+* All gotos point to defined instructions
+* ?
 
-                   -}
+-}
