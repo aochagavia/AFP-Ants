@@ -48,7 +48,10 @@ walkUntilBaseFound, walkUntilFoodFound :: Function
 walkUntilBaseFound = walkUntilCond Home
 walkUntilFoodFound = walkUntilCond Food
 
-data FnBuilder = FnBuilder Int [(Int, Instruction)]
+data FnBuilder = FnBuilder {
+    freshLabel :: Int,
+    instructions :: [(Int, Instruction)]
+}
 
 declare :: State FnBuilder InternalLabel
 declare = do (FnBuilder u is) <- get

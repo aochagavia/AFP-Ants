@@ -24,7 +24,10 @@ data Instruction
     | Inline Function Instruction
     deriving Show
 
-data DSLState = DSLState Int [(Int, Instruction)] deriving Show
+data DSLState = DSLState {
+    freshLabel :: Int,
+    instructions :: [(Int, Instruction)]
+} deriving Show
 
 declare :: State DSLState Instruction
 declare = do (DSLState u is) <- get
