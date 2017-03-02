@@ -17,6 +17,7 @@ library
                      , Instruction
                      , InstructionRecursive
                      , Function
+                     , Language
                      , Simulator
                      , Simulator.GamePlay
                      , Simulator.Options
