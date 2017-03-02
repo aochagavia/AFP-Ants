@@ -1,4 +1,4 @@
-module Function (
+module Language.Function (
     MarkerNumber,
     InvChance,
     SenseDir(..),

@@ -11,7 +11,7 @@ import Instruction
 import Prelude hiding (Left, Right)
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Trans.State.Lazy
+import Control.Monad.State
 import Data.Char
 import Data.Maybe
 import Data.Array.IO
