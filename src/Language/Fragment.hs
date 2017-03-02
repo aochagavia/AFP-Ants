@@ -7,10 +7,6 @@ import Control.Monad.Identity
 import Language.Compiler hiding (Instruction(..))
 import qualified Language.Compiler as Co
 
-import Language.Function (Function)
-
-import qualified Language.Function as Fn
-
 -- import Instruction
 
 data Instruction
@@ -23,7 +19,6 @@ data Instruction
     | Move Instruction Instruction
     | Flip InvChance Instruction Instruction
     | Goto Int
-    | Inline Function Instruction
     deriving Show
 
 data DSLState = DSLState {
@@ -69,31 +64,5 @@ buildProgram p = let DSLState _ is = execState p (DSLState 0 []) in is
 
 -- buildProgram program
 
-genIr :: State DSLState _ -> Co.Instruction
-genIr (State (DSLState _ ins) _) = undefined
-
---nameFragment :: Name -> AnonFragment -> Fragment
---nameFragment name (AnonFragment instrs) = Fragment name instrs
-
-forever :: Function -> State DSLState Instruction
-forever function = do
-    label <- declare
-    label `defineAs` Inline function label
-    return label
-
-{-
-{- Example program -}
-program :: Program
-program = Program main []
-
-main :: Fragment
-main = nameFragment (Name "main") $ forever $ sequenceT instructions
-    where
-    instructions = [ walkUntilFoodFound
-                   , Function [ PickUp TEnd TEnd ]
-                   , turnAround
-                   , walkUntilBaseFound
-                   , Function [ Drop TEnd ]
-                   ]
-
-                   -}
+--genIr :: State DSLState _ -> Co.Instruction
+--genIr (State (DSLState _ ins) _) = undefined
