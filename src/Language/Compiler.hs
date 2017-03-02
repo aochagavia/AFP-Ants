@@ -100,8 +100,8 @@ notHome = Function "notHome" (Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHo
 foundHome :: Instruction
 foundHome = Function "foundHome" (Move (Drop start) goHome)
 
--- New functions: port to Jorrits format
-
+-- Functions: available in Language.Functions
+{-
 data Directions = LeftLeft | DirLeft | DirAhead | DirRight | RightRight | Back
 
 turn :: Directions -> Instruction -> Instruction
@@ -124,3 +124,4 @@ turnCond :: LeftOrRight -> Condition -> Instruction -> Instruction -> Instructio
 turnCond lorr cond trueIns falseIns = turnCond' 6
     where   turnCond' 0 = falseIns
             turnCond' n = Sense Ahead trueIns (Turn lorr (turnCond' (n - 1))) cond
+-}

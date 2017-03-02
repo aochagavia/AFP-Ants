@@ -95,29 +95,3 @@ genIR state = toIR fragments
                         parseIns (Move trueIns falseIns)                = Co.Move (parseIns trueIns) (parseIns falseIns)
                         parseIns (Flip invChance trueIns falseIns)      = Co.Flip invChance (parseIns trueIns) (parseIns falseIns)
                         parseIns (Goto uid)                             = Co.Function (show uid) (parseIns (Map.fromList frag Map.! uid))
-
---nameFragment :: Name -> AnonFragment -> Fragment
---nameFragment name (AnonFragment instrs) = Fragment name instrs
-
---forever :: Function -> State DSLState Instruction
---forever function = do
---    label <- declare
---    label `defineAs` Inline function label
---    return label
-
-{-
-{- Example program -}
-program :: Program
-program = Program main []
-
-main :: Fragment
-main = nameFragment (Name "main") $ forever $ sequenceT instructions
-    where
-    instructions = [ walkUntilFoodFound
-                   , Function [ PickUp TEnd TEnd ]
-                   , turnAround
-                   , walkUntilBaseFound
-                   , Function [ Drop TEnd ]
-                   ]
-
-                   -}
