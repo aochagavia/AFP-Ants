@@ -16,11 +16,10 @@ times i = sequenceF . replicate i
 -- Creates a new function produced by concatenating the functions in the list
 sequenceF :: [Function] -> Function
 sequenceF [] = error "cannot sequenceF 0 functions"
-sequenceF (f:[]) = f
+sequenceF [f] = f
 sequenceF (f:fs) = \ret -> do
         nextFn <- sequenceF fs ret
-        start <- f nextFn
-        return start
+        f nextFn
 
 -- Combine the functions in such a way that, at runtime, one of them is run randomly
 choose :: [Function] -> Function
@@ -34,7 +33,7 @@ walkUntilBaseFound = walkUntilCond Home
 walkUntilFoodFound = walkUntilCond Food
 
 walkUntilCond :: Condition -> Function
-walkUntilCond cond = \ret -> do
+walkUntilCond cond ret = do
     start <- declare
     walk <- declare
     start `defineAs` Sense Here ret walk cond
@@ -42,7 +41,7 @@ walkUntilCond cond = \ret -> do
     return start
 
 turnAround :: Function
-turnAround = times 3 (\ret -> return $ Turn Left ret)
+turnAround = times 3 (return . Turn Left)
 
 {- A non-terminating program -}
 

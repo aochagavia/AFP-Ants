@@ -6,8 +6,8 @@ import Simulator.Runner
 import qualified Worlds
 
 main :: IO ()
-main = let red = compiledProgram
-           black = compiledProgram
+main = let red = fragmentProgram
+           black = fragmentProgram
            world = Worlds.sample0
            options = buildOptions <$> red <*> black <*> world <*> pure 100000
        in options >>= simulate
