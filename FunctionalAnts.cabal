@@ -16,6 +16,7 @@ library
   exposed-modules:     Lib
                      , Instruction
                      , InstructionRecursive
+                     , Language.Compiler
                      , Language.Fragment
                      , Language.Function
                      , Simulator

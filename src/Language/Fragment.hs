@@ -4,7 +4,9 @@ import Prelude hiding (Left, Right) -- FIXME
 import Control.Monad.State
 import Control.Monad.Identity
 
-import Instruction hiding (Instruction(..))
+import Language.Compiler hiding (Instruction(..))
+import qualified Language.Compiler as Co
+
 import Language.Function (Function)
 
 import qualified Language.Function as Fn
@@ -57,15 +59,18 @@ program = do
     -- Bodies
     start      `defineAs` Sense Ahead pickupFood search Food
     pickupFood `defineAs` Move (PickUp goHome start) start
-    search     `defineAs` (Flip 3 (Turn Left start) (Flip 2 (Turn Right start) (Move start search)))
+    search     `defineAs` Flip 3 (Turn Left start) (Flip 2 (Turn Right start) (Move start search))
     goHome     `defineAs` Sense Ahead foundHome notHome Home
     notHome    `defineAs` Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome notHome))
     foundHome  `defineAs` Move (Drop start) goHome
 
 buildProgram :: State DSLState () -> [(Int, Instruction)]
-buildProgram p = let DSLState _ is = snd $ (runState p) (DSLState 0 []) in is
+buildProgram p = let DSLState _ is = execState p (DSLState 0 []) in is
 
 -- buildProgram program
+
+genIr :: State DSLState _ -> Co.Instruction
+genIr (State (DSLState _ ins) _) = undefined
 
 --nameFragment :: Name -> AnonFragment -> Fragment
 --nameFragment name (AnonFragment instrs) = Fragment name instrs

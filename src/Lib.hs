@@ -9,7 +9,8 @@ import Data.Array.IO (newListArray)
 
 import Simulator
 import Instruction
-import Function (genCode, start)
+
+import Language.Compiler (genCode, start)
 
 genProgram :: IO ()
 genProgram = putStr $ unlines $ map show defaultProgram'
@@ -40,6 +41,3 @@ defaultProgram' = [ Sense Ahead 1 3 Food -- state 0: [SEARCH] is there food in f
                   , Turn Right 8 -- state 14: turn right and return to state 8
                   , Move 8 11 -- state 15: ...or move forward and return to state 8
                   ]
-
--- switch :: [(SenseDir, Condition)] -> [[Instruction]] -> [Instruction] -> [Instruction]
--- switch sense_conditions branches other = [Sense sense_dir branch other | (sense_dir, condition) <- sense_conditions, branch < branches]

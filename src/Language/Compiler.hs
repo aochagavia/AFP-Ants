@@ -1,4 +1,4 @@
-module Language.Function (
+module Language.Compiler (
     MarkerNumber,
     InvChance,
     SenseDir(..),
@@ -7,8 +7,6 @@ module Language.Function (
     Instruction(..),
 
     genCode,
-    test,
-
     start,
     ) where
 
@@ -62,11 +60,6 @@ compile (Drop f)                    state@(nextState, functioncalls) = let (call
 compile (Turn lorr f)               state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = compile f (nextState + 1, functioncalls) in
                                                                            (nextState, functioncalls', In.Turn lorr call : instructions)
 
-
-test, test1 :: Instruction
-test = Function "test" (Move test1 test)
-test1 = Function "test1" (Drop test)
-
 {-
 The default program that is implemented recursively
 defaultProgram' :: [Instruction]
@@ -107,24 +100,7 @@ notHome = Function "notHome" (Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHo
 foundHome :: Instruction
 foundHome = Function "foundHome" (Move (Drop start) goHome)
 
--- Idea: use a uniqSupply like Monad to get unique identifiers for each definition.
--- Then define "defineAs" somehow.
-{-
-program = do
-    -- Definitions
-    start      <- typeGoto
-    pickupFood <- typeGoto
-    search     <- typeGoto
-    goHome     <- typeGoto
-    foundHome  <- typeGoto
-
-    -- Bodies
-    start      `defineAs` Sense Ahead pickupFood search Food
-    pickupFood `defineAs` Move (PickUp goHome start) start
-    search     `defineAs` Flip 3 (Turn Left start) (Flip 2 (Turn Right start) (Move start search))
-    goHome     `defineAs` Sense Ahead foundHome (Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome))) Home
-    foundHome  `defineAs` Move (Drop start) goHome
--}
+-- New functions: port to Jorrits format
 
 data Directions = LeftLeft | DirLeft | DirAhead | DirRight | RightRight | Back
 
