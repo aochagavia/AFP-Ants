@@ -6,7 +6,7 @@ module Function (
     Condition(..),
     Instruction(..),
 
-    run,
+    genCode,
     test,
 
     start,
@@ -30,39 +30,37 @@ data Instruction
     | Flip InvChance Instruction Instruction
     deriving Show
 
-run :: Instruction -> [In.Instruction]
-run ins = let (_, _, instructions) = parse ins (0, Map.empty) in instructions
+genCode :: Instruction -> [In.Instruction]
+genCode ins = let (_, _, instructions) = compile ins (0, Map.empty) in instructions
 
 --       ...             Next add, Possible functioncalls       Called state, Updated functioncalls,   Add this code to output
-parse :: Instruction -> (AntState, Map.Map String AntState) -> (AntState,     Map.Map String AntState, [In.Instruction])
+compile :: Instruction -> (AntState, Map.Map String AntState) -> (AntState,     Map.Map String AntState, [In.Instruction])
 -- functioncall
-parse (Function name instr)       state@(nextState, functioncalls) = case Map.lookup name functioncalls of
+compile (Function name instr)       state@(nextState, functioncalls) = case Map.lookup name functioncalls of
                                                                           Just state -> (state, functioncalls, []) -- Function is already available -> no code added -> function state returned (the goto)
-                                                                          Nothing    -> parse instr (nextState, Map.insert name nextState functioncalls) -- Functioncall added to functioncalls -> code gets added in the parse of the instruction (the goto is now available in the environment)
+                                                                          Nothing    -> compile instr (nextState, Map.insert name nextState functioncalls) -- Functioncall added to functioncalls -> code gets added in the compile of the instruction (the goto is now available in the environment)
 -- double call
-parse (Sense senseDir f1 f2 cond) state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = parse f1 (nextState + 1, functioncalls) in
-                                                                     let (callF2, functioncalls'', instructions') = parse f2 (nextState + 1 + length instructions, functioncalls') in
-                                                                         (nextState, functioncalls'', In.Sense senseDir callF1 callF2 cond : instructions ++ instructions')
-parse (PickUp f1 f2)              state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = parse f1 (nextState + 1, functioncalls) in
-                                                                     let (callF2, functioncalls'', instructions') = parse f2 (nextState + 1 + length instructions, functioncalls') in
-                                                                         (nextState, functioncalls'', In.PickUp callF1 callF2 : instructions ++ instructions')
-parse (Move f1 f2)                state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = parse f1 (nextState + 1, functioncalls) in
-                                                                     let (callF2, functioncalls'', instructions') = parse f2 (nextState + 1 + length instructions, functioncalls') in
-                                                                         (nextState, functioncalls'', In.Move callF1 callF2 : instructions ++ instructions')
-parse (Flip invChance f1 f2)      state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = parse f1 (nextState + 1, functioncalls) in
-                                                                     let (callF2, functioncalls'', instructions') = parse f2 (nextState + 1 + length instructions, functioncalls') in
-                                                                         (nextState, functioncalls'', In.Flip invChance callF1 callF2 : instructions ++ instructions')
+compile (Sense senseDir f1 f2 cond) state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = compile f1 (nextState + 1, functioncalls) in
+                                                                       let (callF2, functioncalls'', instructions') = compile f2 (nextState + 1 + length instructions, functioncalls') in
+                                                                           (nextState, functioncalls'', In.Sense senseDir callF1 callF2 cond : instructions ++ instructions')
+compile (PickUp f1 f2)              state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = compile f1 (nextState + 1, functioncalls) in
+                                                                       let (callF2, functioncalls'', instructions') = compile f2 (nextState + 1 + length instructions, functioncalls') in
+                                                                           (nextState, functioncalls'', In.PickUp callF1 callF2 : instructions ++ instructions')
+compile (Move f1 f2)                state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = compile f1 (nextState + 1, functioncalls) in
+                                                                       let (callF2, functioncalls'', instructions') = compile f2 (nextState + 1 + length instructions, functioncalls') in
+                                                                           (nextState, functioncalls'', In.Move callF1 callF2 : instructions ++ instructions')
+compile (Flip invChance f1 f2)      state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = compile f1 (nextState + 1, functioncalls) in
+                                                                       let (callF2, functioncalls'', instructions') = compile f2 (nextState + 1 + length instructions, functioncalls') in
+                                                                           (nextState, functioncalls'', In.Flip invChance callF1 callF2 : instructions ++ instructions')
 -- single call
-parse (Mark markNumber f)         state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = parse f (nextState + 1, functioncalls) in
-                                                                         (nextState, functioncalls', In.Mark markNumber call : instructions)
-parse (Unmark markNumber f)       state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = parse f (nextState + 1, functioncalls) in
-                                                                         (nextState, functioncalls', In.Unmark markNumber call : instructions)
-parse (Drop f)                    state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = parse f (nextState + 1, functioncalls) in
-                                                                         (nextState, functioncalls', In.Drop call : instructions)
-                                                                    --let (f', env') = parse f (x + 1, map, ins ++ [In.Drop f']) in (x, env')
-parse (Turn lorr f)               state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = parse f (nextState + 1, functioncalls) in
-                                                                         (nextState, functioncalls', In.Turn lorr call : instructions)
-                                                                    --let (f', env') = parse f (x + 1, map, ins ++ [In.Turn lorr f']) in (x, env')
+compile (Mark markNumber f)         state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = compile f (nextState + 1, functioncalls) in
+                                                                           (nextState, functioncalls', In.Mark markNumber call : instructions)
+compile (Unmark markNumber f)       state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = compile f (nextState + 1, functioncalls) in
+                                                                           (nextState, functioncalls', In.Unmark markNumber call : instructions)
+compile (Drop f)                    state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = compile f (nextState + 1, functioncalls) in
+                                                                           (nextState, functioncalls', In.Drop call : instructions)
+compile (Turn lorr f)               state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = compile f (nextState + 1, functioncalls) in
+                                                                           (nextState, functioncalls', In.Turn lorr call : instructions)
 
 
 test, test1 :: Instruction

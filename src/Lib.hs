@@ -1,5 +1,6 @@
 module Lib
     ( defaultProgram,
+      compiledProgram,
       genProgram
     ) where
 
@@ -8,6 +9,7 @@ import Data.Array.IO (newListArray)
 
 import Simulator
 import Instruction
+import Function (genCode, start)
 
 genProgram :: IO ()
 genProgram = putStr $ unlines $ map show defaultProgram'
@@ -15,6 +17,10 @@ genProgram = putStr $ unlines $ map show defaultProgram'
 defaultProgram :: IO AntInstructions
 defaultProgram = newListArray range defaultProgram'
     where range = (0, length defaultProgram' - 1)
+
+compiledProgram :: IO AntInstructions
+compiledProgram = newListArray range (genCode start)
+    where range = (0, length (genCode start) - 1)
 
 defaultProgram' :: [Instruction]
 defaultProgram' = [ Sense Ahead 1 3 Food -- state 0: [SEARCH] is there food in front of me?
