@@ -15,12 +15,17 @@ times i = sequenceF . replicate i
 
 -- Creates a new function produced by concatenating the functions in the list
 sequenceF :: [Function] -> Function
-sequenceF [] = error "cannot sequenceF 0 templates"
+sequenceF [] = error "cannot sequenceF 0 functions"
 sequenceF (f:[]) = f
 sequenceF (f:fs) = \ret -> do
         nextFn <- sequenceF fs ret
         start <- f nextFn
         return start
+
+-- Combine the functions in such a way that, at runtime, one of them is run randomly
+choose :: [Function] -> Function
+choose [] = error "cannot choose 0 functions"
+choose fs = undefined -- FIXME: how do you use flip in a fair way?
 
 {- Example functions -}
 
