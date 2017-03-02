@@ -19,12 +19,10 @@ import Prelude hiding (Left, Right) -- FIXME
 import Control.Monad.State
 import Control.Monad.Identity
 
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 
 import Language.Compiler hiding (Instruction(..))
 import qualified Language.Compiler as Co
-
--- import Instruction
 
 data Instruction
     = Sense SenseDir Instruction Instruction Condition
@@ -36,12 +34,11 @@ data Instruction
     | Move Instruction Instruction
     | Flip InvChance Instruction Instruction
     | Goto Int
-    -- | Inline Function Instruction
     deriving Show
 
 data DSLState = DSLState {
     freshLabel :: Int,
-    instructions :: [(Int, Instruction)]
+    instructions :: Map.Map Int Instruction
 } deriving Show
 
 declare :: State DSLState Instruction
@@ -51,7 +48,7 @@ declare = do (DSLState u is) <- get
 
 defineAs :: Instruction -> Instruction -> State DSLState ()
 defineAs (Goto d) i = do (DSLState u is) <- get
-                         put (DSLState u ((d,i):is))
+                         put (DSLState u (Map.insert d i is))
 
 define :: Instruction -> State DSLState Instruction
 define i = do
@@ -79,8 +76,8 @@ program = do
 
 -- buildProgram program
 
-buildProgram :: State DSLState () -> [(Int, Instruction)]
-buildProgram p = let DSLState _ is = execState p (DSLState 0 []) in is
+buildProgram :: State DSLState () -> Map.Map Int Instruction
+buildProgram p = instructions $ execState p (DSLState 0 Map.empty)
 
 genIR :: State DSLState () -> Co.Instruction
 genIR state = toIR fragments
@@ -94,7 +91,7 @@ genIR state = toIR fragments
                         parseIns (Turn lorr ins)                        = Co.Turn lorr (parseIns ins)
                         parseIns (Move trueIns falseIns)                = Co.Move (parseIns trueIns) (parseIns falseIns)
                         parseIns (Flip invChance trueIns falseIns)      = Co.Flip invChance (parseIns trueIns) (parseIns falseIns)
-                        parseIns (Goto uid)                             = Co.Function (show uid) (parseIns (Map.fromList frag Map.! uid))
+                        parseIns (Goto uid)                             = Co.Function (show uid) (parseIns (frag Map.! uid))
 
 --nameFragment :: Name -> AnonFragment -> Fragment
 --nameFragment name (AnonFragment instrs) = Fragment name instrs
