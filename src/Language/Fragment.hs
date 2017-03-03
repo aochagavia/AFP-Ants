@@ -27,6 +27,13 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Prelude as P
 
+{- The AST -}
+
+data Program = Program {
+    pEntryPoint :: Label,
+    pFragments :: Map.Map Label Fragment
+}
+
 data Fragment
     = Sense SenseDir Fragment Fragment Condition
     | Mark MarkerNumber Fragment
@@ -38,6 +45,53 @@ data Fragment
     | Flip InvChance Fragment Fragment
     | Goto Int
     deriving Show
+
+type FragmentAlgebra frag =
+    (
+        -- Sense
+        SenseDir -> frag -> frag -> Condition -> frag,
+        -- Mark
+        MarkerNumber -> frag -> frag,
+        -- Unmark
+        MarkerNumber -> frag -> frag,
+        -- PickUp
+        frag -> frag -> frag,
+        -- Drop
+        frag -> frag,
+        -- Turn
+        LeftOrRight -> frag -> frag,
+        -- Move
+        frag -> frag -> frag,
+        -- Flip
+        InvChance -> frag -> frag -> frag,
+        -- Goto
+        Int -> frag
+    )
+
+foldFragment :: Fragment -> FragmentAlgebra frag -> frag
+foldFragment fragment (sense, mark, unmark, pickUp, drop,  turn, move, flip, goto) = f fragment
+    where f (Sense dir f1 f2 cond) = sense dir (f f1) (f f2) cond
+          f (Mark x f1) = mark x (f f1)
+          f (Unmark x f1) = unmark x (f f1)
+          f (PickUp f1 f2) = pickUp (f f1) (f f2)
+          f (Drop f1) = drop $ f f1
+          f (Turn lr f1) = turn lr $ f f1
+          f (Move f1 f2) = move (f f1) (f f2)
+          f (Flip ic f1 f2) = flip ic (f f1) (f f2)
+          f (Goto x) = goto x
+
+type ProgramAlgebra prog lfrag frag =
+    (
+        -- A function to fold pFragments
+        [lfrag] -> prog,
+        -- A function to combine labels and fragment results
+        Label -> frag -> lfrag,
+        FragmentAlgebra frag
+    )
+
+foldProgram :: Program -> ProgramAlgebra prog lfrag frag -> prog
+foldProgram (Program { pFragments}) (frags, lfrag, fragAlg) = frags $ map reduceLFrag $ Map.toList pFragments
+    where reduceLFrag (k, v) = lfrag k $ foldFragment v fragAlg
 
 {- Basic types -}
 
@@ -58,15 +112,10 @@ data DSLOutput = DSLOutput {
     fragments :: Map.Map Label Fragment
 }
 
-data Program = Program {
-    pEntryPoint :: Label,
-    pFragments :: Map.Map Label Fragment
-}
-
 instance Monoid DSLOutput where
     mempty = DSLOutput Set.empty [] Map.empty
     mappend (DSLOutput df1 ep1 fr1) (DSLOutput df2 ep2 fr2) =
-        let duplicates  = df1 <> df2 <> Set.fromList (Map.keys fr1) <> Set.fromList (Map.keys fr2)
+        let duplicates  = df1 <> df2 <> (Set.fromList (Map.keys fr1) `Set.intersection` Set.fromList (Map.keys fr2))
             entryPoints = ep1 <> ep2
             fragments   = fr1 <> fr2
         in DSLOutput duplicates entryPoints fragments
@@ -128,9 +177,30 @@ checkNoDuplicates dups = case map MultipleDefinitions $ Set.toList dups of
 
 -- FIXME: implement stuff below (consider using an algebra)
 
--- Note: we could enforce this at compile time if we made a labelling monad
+getGotoTargets :: Program -> [Label]
+getGotoTargets p = foldProgram p (concat, const id, (sense, mark, unmark, pickUp, drop, turn, move, flip, goto))
+    where
+        sense _ f1 f2 _ = f1 ++ f2
+        mark = const id
+        unmark = const id
+        pickUp = (++)
+        drop = id
+        turn = const id
+        move = (++)
+        flip = const (++)
+        goto = (:[])
+
+getFragmentLabels :: Program -> [Label]
+getFragmentLabels (Program _ fragments) = Map.keys fragments
+
 checkGotosDefined :: Program -> Either [ProgramBuildError] Program
-checkGotosDefined = return
+checkGotosDefined p@(Program entryPoint fragments) =
+    let targetSet = Set.fromList $ getGotoTargets p
+        labelSet = Set.fromList $ getFragmentLabels p
+        undefinedGotos = targetSet `Set.difference` labelSet
+    in case map UndefinedLabel $ Set.toList undefinedGotos of
+        [] -> return p
+        xs -> P.Left xs
 
 checkNoDeadCode :: Program -> Either [ProgramBuildError] Program
 checkNoDeadCode = return
