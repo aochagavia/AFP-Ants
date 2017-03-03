@@ -39,6 +39,7 @@ data Fragment
     deriving Show
 
 type ProgramBuilder a = State DSLState a
+type Label = Int
 
 data DSLState = DSLState {
     maybeEntryPoint :: Maybe Int,
@@ -59,8 +60,10 @@ declare = do state@(DSLState { freshLabel }) <- get
              return (Goto freshLabel)
 
 defineAs :: Fragment -> Fragment -> ProgramBuilder ()
-defineAs (Goto d) i = do (state@DSLState { instructions }) <- get
-                         put (state { instructions = Map.insert d i instructions })
+defineAs (Goto d) i = do
+    (state@DSLState { instructions }) <- get
+    -- TODO: use Map.insertLookupWithKey to ensure no double definitions happen
+    put (state { instructions = Map.insert d i instructions })
 
 define :: Fragment -> ProgramBuilder Fragment
 define i = do
@@ -78,12 +81,16 @@ setEntryPoint (Goto i) = do
 {- Turning the ProgramBuilder into a real Program -}
 
 data ProgramBuildError
-    = MissingEntryPoint
-    | UndefinedLabel Int
+    = DeadCode Label
+    | DoubleDefinition Label
+    | MissingEntryPoint
+    | UndefinedLabel Label
 
 instance Show ProgramBuildError where
-    show MissingEntryPoint  = "missing entry point"
-    show (UndefinedLabel x) = "there is a goto to label " ++ show x ++ ", but said label does not correspond to any instruction"
+    show (DeadCode x)         = "fragment with label " ++ show x ++ " is defined but never used"
+    show (DoubleDefinition x) = "multiple definitions for label " ++ show x
+    show MissingEntryPoint    = "missing entry point"
+    show (UndefinedLabel x)   = "goto targeting undefined label " ++ show x
 
 buildProgram :: ProgramBuilder () -> Either ProgramBuildError Program
 buildProgram p = let (DSLState entry _ instrs) = execState p (DSLState Nothing 0 Map.empty)
@@ -99,6 +106,7 @@ checkProgram = P.Right
 {- TODO, check:
 
 * All gotos point to defined instructions
-* ?
+* No dead code (fragments that are defined but not used)
+* No unused labels (fragments that are declared but not defined)
 
 -}
