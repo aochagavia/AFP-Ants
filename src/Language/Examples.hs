@@ -1,5 +1,6 @@
 module Language.Examples (
-    fragmentProgram
+    fragmentProgram,
+    program
 ) where
 
 import Prelude hiding (Either(..))
@@ -12,7 +13,7 @@ import Language.Instruction hiding (Instruction(..))
 import qualified Language.Instruction as I
 import qualified Prelude as P
 
-program :: State DSLState ()
+program :: ProgramBuilder ()
 program = do
     -- Definitions
     start      <- declare
@@ -29,6 +30,9 @@ program = do
     goHome     `defineAs` Sense Ahead foundHome notHome Home
     notHome    `defineAs` Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome notHome))
     foundHome `defineAs` Move (Drop start) goHome
+
+    -- Entry point
+    setEntryPoint start
 
 fragmentProgram :: [I.Instruction]
 fragmentProgram = let (P.Right code) = genCode <$> genIR <$> buildProgram program in code
