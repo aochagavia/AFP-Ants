@@ -7,7 +7,7 @@ import Language.Fragment
 import Language.Instruction hiding (Instruction(..))
 
 -- A function requires an instruction, which is executed when the function ends
-type Function = Instruction -> State DSLState Instruction
+type Function = Fragment -> ProgramBuilder Fragment
 
 -- Creates a new function produced by repeating the function code i times
 times :: Int -> Function -> Function
@@ -45,7 +45,7 @@ turnAround = times 3 (return . Turn Left)
 
 {- A non-terminating program -}
 
-forever :: Function -> State DSLState Instruction
+forever :: Function -> ProgramBuilder Fragment
 forever mkFunction = do
     start <- declare
     function <- mkFunction start

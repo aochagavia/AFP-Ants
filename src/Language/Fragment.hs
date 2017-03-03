@@ -6,7 +6,7 @@ module Language.Fragment (
     SenseDir(..),
     LeftOrRight(..),
     Condition(..),
-    Instruction(..),
+    Fragment(..),
     DSLState(..),
     Program(..),
     ProgramBuilder,
@@ -26,15 +26,15 @@ import Language.Instruction hiding (Instruction(..))
 import qualified Data.Map.Strict as Map
 import qualified Prelude as P
 
-data Instruction
-    = Sense SenseDir Instruction Instruction Condition
-    | Mark MarkerNumber Instruction
-    | Unmark MarkerNumber Instruction
-    | PickUp Instruction Instruction
-    | Drop Instruction
-    | Turn LeftOrRight Instruction
-    | Move Instruction Instruction
-    | Flip InvChance Instruction Instruction
+data Fragment
+    = Sense SenseDir Fragment Fragment Condition
+    | Mark MarkerNumber Fragment
+    | Unmark MarkerNumber Fragment
+    | PickUp Fragment Fragment
+    | Drop Fragment
+    | Turn LeftOrRight Fragment
+    | Move Fragment Fragment
+    | Flip InvChance Fragment Fragment
     | Goto Int
     deriving Show
 
@@ -43,32 +43,32 @@ type ProgramBuilder a = State DSLState a
 data DSLState = DSLState {
     maybeEntryPoint :: Maybe Int,
     freshLabel :: Int,
-    instructions :: Map.Map Int Instruction
+    instructions :: Map.Map Int Fragment
 } deriving Show
 
 data Program = Program {
     pEntryPoint :: Int,
-    pInstructions :: Map.Map Int Instruction
+    pFragments :: Map.Map Int Fragment
 }
 
 {- Basic building blocks -}
 
-declare :: ProgramBuilder Instruction
+declare :: ProgramBuilder Fragment
 declare = do state@(DSLState { freshLabel }) <- get
              put (state { freshLabel = freshLabel + 1})
              return (Goto freshLabel)
 
-defineAs :: Instruction -> Instruction -> ProgramBuilder ()
+defineAs :: Fragment -> Fragment -> ProgramBuilder ()
 defineAs (Goto d) i = do (state@DSLState { instructions }) <- get
                          put (state { instructions = Map.insert d i instructions })
 
-define :: Instruction -> ProgramBuilder Instruction
+define :: Fragment -> ProgramBuilder Fragment
 define i = do
     label <- declare
     label `defineAs` i
     return label
 
-setEntryPoint :: Instruction -> ProgramBuilder ()
+setEntryPoint :: Fragment -> ProgramBuilder ()
 setEntryPoint (Goto i) = do
     state@(DSLState entryPoint _ _) <- get
     case entryPoint of
