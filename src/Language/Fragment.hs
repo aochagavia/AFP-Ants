@@ -20,6 +20,7 @@ module Language.Fragment (
 import Prelude hiding (Left, Right)
 import Control.Monad.State
 import Control.Monad.Writer
+import Data.List ((\\))
 
 import Language.Instruction hiding (Instruction(..))
 
@@ -147,14 +148,16 @@ data ProgramBuildError
     | MultipleEntryPoints [Label]
     | NoEntryPoint
     | UndefinedLabel Label
+    | UnusedLabel Label
     deriving (Eq, Ord)
 
 instance Show ProgramBuildError where
-    show (DeadCode x)         = "fragment with label " ++ show x ++ " is defined but never used"
+    show (DeadCode x)             = "fragment with label " ++ show x ++ " is defined but never used"
     show (MultipleDefinitions x)  = "multiple definitions for label " ++ show x
     show (MultipleEntryPoints xs) = "multiple entrypoints: " ++ show xs
-    show NoEntryPoint    = "no entry point defined"
-    show (UndefinedLabel x)   = "goto targeting undefined label " ++ show x
+    show NoEntryPoint             = "no entry point defined"
+    show (UndefinedLabel x)       = "goto targeting undefined label " ++ show x
+    show (UnusedLabel x)          = "label " ++ show x ++ " is declared but not defined"
 
 buildProgram :: ProgramBuilder () -> Either [ProgramBuildError] Program
 buildProgram programBuilder =
@@ -205,5 +208,9 @@ checkGotosDefined p@(Program entryPoint fragments) =
 checkNoDeadCode :: Program -> Either [ProgramBuildError] Program
 checkNoDeadCode = return
 
+-- topLabel is the output of the State monad and therefore equals the number of declared labels
 checkNoUnusedLabels :: Label -> Program -> Either [ProgramBuildError] Program
-checkNoUnusedLabels topLabel = return
+checkNoUnusedLabels topLabel p =
+    let us = [0..topLabel-1] \\ Map.keys (pFragments p) in
+    if null us then P.Right p
+    else P.Left (map UnusedLabel us)

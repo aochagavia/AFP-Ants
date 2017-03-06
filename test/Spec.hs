@@ -1,5 +1,6 @@
 import Prelude hiding (Either(..))
 import Test.QuickCheck
+import Test.QuickCheck.Property as P
 
 import qualified Language.Examples as Examples
 import qualified Prelude as P
@@ -14,6 +15,8 @@ main = do
     quickCheck checkNoEntryPoint
     quickCheck checkExampleProgram
     quickCheck checkUndefinedGoto
+    quickCheck checkNoUnusedLabels
+    quickCheck checkNoUnusedLabelsEntryPoint
 
 definedWorlds :: IO ()
 definedWorlds = sequence_ worlds
@@ -32,6 +35,24 @@ checkUndefinedGoto = errors == [UndefinedLabel 42]
           program = do
                     start <- define $ Turn Right (Goto 42)
                     setEntryPoint start
+
+checkNoUnusedLabels :: Property
+checkNoUnusedLabels = counterexample (show errors ++ " == [UnusedLabel 1]") (errors == [UnusedLabel 1])
+    where errors = eitherToList $ buildProgram program
+          program = do
+                    la <- declare
+                    lb <- declare -- Oops. No define.
+                    lc <- declare
+                    la `defineAs` Turn Right lc
+                    lc `defineAs` Turn Right la
+                    setEntryPoint la
+
+checkNoUnusedLabelsEntryPoint :: Property
+checkNoUnusedLabelsEntryPoint = counterexample (show errors ++ " == [UnusedLabel 0]") (errors == [UnusedLabel 0])
+    where errors = eitherToList $ buildProgram program
+          program = do
+                    la <- declare
+                    setEntryPoint la
 
 checkExampleProgram :: Bool
 checkExampleProgram = isRight $ buildProgram Examples.program
