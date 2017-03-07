@@ -1,10 +1,12 @@
 import Prelude hiding (Either(..))
-import Test.QuickCheck
 import Test.QuickCheck.Property as P
 
 import qualified Language.Examples as Examples
 import qualified Prelude as P
 import qualified Worlds
+import qualified Language.Instruction as In
+import qualified Language.Compiler as Co
+import Test.QuickCheck
 import Language.Fragment
 
 import Debug.Trace
@@ -12,6 +14,8 @@ import Debug.Trace
 main :: IO ()
 main = do
     definedWorlds
+    quickCheck optimizeInstructionsSense
+    quickCheck optimizeInstructionsFlip
     quickCheck checkNoEntryPoint
     quickCheck checkExampleProgram
     quickCheck checkUndefinedGoto
@@ -22,6 +26,11 @@ definedWorlds :: IO ()
 definedWorlds = sequence_ worlds
     where worlds = [Worlds.sample0]
 
+optimizeInstructionsSense :: Bool
+optimizeInstructionsSense = [] == Co.optimize [In.Sense In.Here 0 0 In.Home]
+
+optimizeInstructionsFlip :: Bool
+optimizeInstructionsFlip = [] == Co.optimize [In.Flip 2 0 0]
 checkNoEntryPoint :: Bool
 checkNoEntryPoint = errors == [NoEntryPoint]
     where errors = eitherToList $ buildProgram program
