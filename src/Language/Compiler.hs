@@ -27,7 +27,7 @@ type CompileState = ReaderT LabelledFragments (State GeneratedFragments) (AntSta
 {- Compiler code -}
 
 genCode :: Program -> [In.Instruction]
-genCode (Program start fragments) = snd $ fst $ runState (runReaderT (compile (Goto start) 0) fragments) Map.empty
+genCode (Program start fragments) = snd $ evalState (runReaderT (compile (Goto start) 0) fragments) Map.empty
 
 compile :: Fragment -> AntState -> CompileState
 compile (Goto label)                = functionCall label
@@ -55,7 +55,7 @@ functionCall :: Label -> AntState -> CompileState
 functionCall label stateNumber = do
     generatedFragments <- get
     case Map.lookup label generatedFragments of
-        Just state -> return (stateNumber, []) -- Function is already generated -> no code added -> function state returned (the goto)
+        Just state -> return (state, []) -- Function is already generated -> no code added -> function state returned (the goto)
         Nothing    -> do -- Functioncall added to generatedFragments -> code gets added in the compile of the instruction (the goto is now available in the environment)
             put $ Map.insert label stateNumber generatedFragments
             labelledFragments <- ask
