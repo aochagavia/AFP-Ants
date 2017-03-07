@@ -23,7 +23,7 @@ import qualified Language.Instruction as In
 import Language.Instruction hiding (Instruction(..))
 
 data Instruction
-    = Function String Instruction
+    = Function Int Instruction
     | Sense SenseDir Instruction Instruction Condition
     | Mark MarkerNumber Instruction
     | Unmark MarkerNumber Instruction
@@ -45,13 +45,13 @@ genIR (F.Program entry frag) = parseIns (F.Goto entry)
     parseIns (F.Turn lorr ins)                        = Turn lorr (parseIns ins)
     parseIns (F.Move trueIns falseIns)                = Move (parseIns trueIns) (parseIns falseIns)
     parseIns (F.Flip invChance trueIns falseIns)      = Flip invChance (parseIns trueIns) (parseIns falseIns)
-    parseIns (F.Goto uid)                             = Function (show uid) (parseIns (frag Map.! uid))
+    parseIns (F.Goto uid)                             = Function uid (parseIns (frag Map.! uid))
 
 genCode :: Instruction -> [In.Instruction]
 genCode ins = let (_, _, instructions) = compile ins (0, Map.empty) in instructions
 
---       ...             Next add, Possible functioncalls       Called state, Updated functioncalls,   Add this code to output
-compile :: Instruction -> (AntState, Map.Map String AntState) -> (AntState,     Map.Map String AntState, [In.Instruction])
+--       ...             Next add, Possible functioncalls      Called state, Updated functioncalls, Add this code to output
+compile :: Instruction -> (AntState, Map.Map Int AntState) -> (AntState,     Map.Map Int AntState, [In.Instruction])
 -- functioncall
 compile (Function name instr)       state@(nextState, functioncalls) = case Map.lookup name functioncalls of
                                                                           Just state -> (state, functioncalls, []) -- Function is already available -> no code added -> function state returned (the goto)
@@ -134,22 +134,22 @@ defaultProgram' = [ Sense Ahead 1 3 Food -- state 0: [SEARCH] is there food in f
 -}
 
 start :: Instruction
-start = Function "start" (Sense Ahead pickupFood search Food)
+start = Function 0 (Sense Ahead pickupFood search Food)
 
 pickupFood :: Instruction
-pickupFood = Function "pickupFood" (Move (PickUp goHome start) start)
+pickupFood = Function 1 (Move (PickUp goHome start) start)
 
 search :: Instruction
-search = Function "search" (Flip 3 (Turn Left start) (Flip 2 (Turn Right start) (Move start search)))
+search = Function 2 (Flip 3 (Turn Left start) (Flip 2 (Turn Right start) (Move start search)))
 
 goHome :: Instruction
-goHome = Function "goHome" (Sense Ahead foundHome notHome Home)
+goHome = Function 3 (Sense Ahead foundHome notHome Home)
 
 notHome :: Instruction
-notHome = Function "notHome" (Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome notHome)))
+notHome = Function 4 (Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome notHome)))
 
 foundHome :: Instruction
-foundHome = Function "foundHome" (Move (Drop start) goHome)
+foundHome = Function 5 (Move (Drop start) goHome)
 
 -- Functions: available in Language.Functions
 {-
