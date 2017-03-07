@@ -19,12 +19,6 @@ defaultProgram :: IO AntInstructions
 defaultProgram = newListArray range defaultProgram'
     where range = (0, length defaultProgram' - 1)
 
-{-
-compiledProgram :: IO AntInstructions
-compiledProgram = newListArray range (genCode start)
-    where range = (0, length (genCode start) - 1)
--}
-
 fragmentProgram :: IO AntInstructions
 fragmentProgram = let fragProg = E.fragmentProgram
                       range = (0, length fragProg - 1)

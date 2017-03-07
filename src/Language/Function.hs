@@ -51,3 +51,28 @@ forever mkFunction = do
     function <- mkFunction start
     start `defineAs` function
     return start
+
+{- Basic fragments to use as building blocks -}
+
+data Directions = LeftLeft | DirLeft | DirAhead | DirRight | RightRight | Back
+
+turn :: Directions -> Fragment -> Fragment
+turn LeftLeft nextIns = Turn Left (turn DirLeft nextIns)
+turn DirLeft nextIns = Turn Left nextIns
+turn DirAhead nextIns = nextIns
+turn DirRight nextIns = Turn Right nextIns
+turn RightRight nextIns = Turn Right (turn DirRight nextIns)
+turn Back nextIns = Turn Right (turn RightRight nextIns)
+
+senseDir :: Directions -> Condition -> Fragment -> Fragment -> Fragment
+senseDir LeftLeft cond trueIns falseIns = Turn Left (senseDir DirLeft cond (Turn Right trueIns) (Turn Right falseIns))
+senseDir DirLeft cond trueIns falseIns = Sense LeftAhead trueIns falseIns cond
+senseDir DirAhead cond trueIns falseIns = Sense Ahead trueIns falseIns cond
+senseDir DirRight cond trueIns falseIns = Sense RightAhead trueIns falseIns cond
+senseDir RightRight cond trueIns falseIns = Turn Right (senseDir DirRight cond (Turn Left trueIns) (Turn Left falseIns))
+senseDir Back cond trueIns falseIns = Turn Right (senseDir RightRight cond (Turn Left trueIns) (Turn Left falseIns))
+
+turnCond :: LeftOrRight -> Condition -> Fragment -> Fragment -> Fragment
+turnCond lorr cond trueIns falseIns = turnCond' 6
+    where   turnCond' 0 = falseIns
+            turnCond' n = Sense Ahead trueIns (Turn lorr (turnCond' (n - 1))) cond

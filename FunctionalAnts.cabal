@@ -19,6 +19,7 @@ library
                      , Language.Fragment
                      , Language.Function
                      , Language.Instruction
+                     , Language.Optimizer
                      , Simulator
                      , Simulator.GamePlay
                      , Simulator.Options
