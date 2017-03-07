@@ -57,6 +57,15 @@ checkNoUnusedLabelsEntryPoint = counterexample (show errors ++ " == [UnusedLabel
 checkExampleProgram :: Bool
 checkExampleProgram = isRight $ buildProgram Examples.program
 
+{-
+
+TODO:
+* The result of compiling a program with an identity optimization pass should be the same
+as compiling the program without optimizations (not necessarily true, since the order of the
+statements could perfectly change... How do we check this?)
+
+-}
+
 {- Utility functions -}
 isRight :: P.Either a b -> Bool
 isRight (P.Right _) = True

@@ -10,6 +10,7 @@ module Language.Fragment (
     Program(..),
     ProgramBuilder,
     ProgramBuildError(..),
+    Label,
     buildProgram,
     declare,
     defineAs,

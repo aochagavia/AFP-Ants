@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 module Language.Compiler (
     MarkerNumber,
     InvChance,
@@ -12,11 +14,13 @@ module Language.Compiler (
 
 import Prelude hiding (Left, Right)
 
-import qualified Data.Map as Map
+import Control.Monad.State
+import qualified Data.Map.Strict as Map
 import qualified Language.Fragment as F
 import qualified Language.Instruction as In
 import Language.Instruction hiding (Instruction(..))
 
+-- We should be able to get rid of this...
 data Instruction
     = Function Int Instruction
     | Sense SenseDir Instruction Instruction Condition
@@ -42,34 +46,42 @@ genIR (F.Program entry frag) = parseIns (F.Goto entry)
     parseIns (F.Flip invChance trueIns falseIns)      = Flip invChance (parseIns trueIns) (parseIns falseIns)
     parseIns (F.Goto uid)                             = Function uid (parseIns (frag Map.! uid))
 
-genCode :: Instruction -> [In.Instruction]
-genCode ins = let (_, _, instructions) = compile ins (0, Map.empty) in instructions
+{- CompileState and related functions -}
 
---       ...             Next add, Possible functioncalls      Called state, Updated functioncalls, Add this code to output
-compile :: Instruction -> (AntState, Map.Map Int AntState) -> (AntState,     Map.Map Int AntState, [In.Instruction])
--- functioncall
-compile (Function name instr)       state@(nextState, functioncalls) = case Map.lookup name functioncalls of
-                                                                          Just state -> (state, functioncalls, []) -- Function is already available -> no code added -> function state returned (the goto)
-                                                                          Nothing    -> compile instr (nextState, Map.insert name nextState functioncalls) -- Functioncall added to functioncalls -> code gets added in the compile of the instruction (the goto is now available in the environment)
--- double call
-compile (Sense senseDir f1 f2 cond) state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = compile f1 (nextState + 1, functioncalls) in
-                                                                       let (callF2, functioncalls'', instructions') = compile f2 (nextState + 1 + length instructions, functioncalls') in
-                                                                           (nextState, functioncalls'', In.Sense senseDir callF1 callF2 cond : instructions ++ instructions')
-compile (PickUp f1 f2)              state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = compile f1 (nextState + 1, functioncalls) in
-                                                                       let (callF2, functioncalls'', instructions') = compile f2 (nextState + 1 + length instructions, functioncalls') in
-                                                                           (nextState, functioncalls'', In.PickUp callF1 callF2 : instructions ++ instructions')
-compile (Move f1 f2)                state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = compile f1 (nextState + 1, functioncalls) in
-                                                                       let (callF2, functioncalls'', instructions') = compile f2 (nextState + 1 + length instructions, functioncalls') in
-                                                                           (nextState, functioncalls'', In.Move callF1 callF2 : instructions ++ instructions')
-compile (Flip invChance f1 f2)      state@(nextState, functioncalls) = let (callF1, functioncalls', instructions)   = compile f1 (nextState + 1, functioncalls) in
-                                                                       let (callF2, functioncalls'', instructions') = compile f2 (nextState + 1 + length instructions, functioncalls') in
-                                                                           (nextState, functioncalls'', In.Flip invChance callF1 callF2 : instructions ++ instructions')
--- single call
-compile (Mark markNumber f)         state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = compile f (nextState + 1, functioncalls) in
-                                                                           (nextState, functioncalls', In.Mark markNumber call : instructions)
-compile (Unmark markNumber f)       state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = compile f (nextState + 1, functioncalls) in
-                                                                           (nextState, functioncalls', In.Unmark markNumber call : instructions)
-compile (Drop f)                    state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = compile f (nextState + 1, functioncalls) in
-                                                                           (nextState, functioncalls', In.Drop call : instructions)
-compile (Turn lorr f)               state@(nextState, functioncalls) = let (call, functioncalls', instructions)     = compile f (nextState + 1, functioncalls) in
-                                                                           (nextState, functioncalls', In.Turn lorr call : instructions)
+type CompileState = State (Map.Map F.Label AntState) (AntState, [In.Instruction])
+
+{- Compiler code -}
+
+genCode :: Instruction -> [In.Instruction]
+genCode ins = snd $ fst $ runState (compile ins 0) Map.empty
+
+compile :: Instruction -> AntState -> CompileState
+compile (Function label instr)      = functionCall label instr
+compile (Sense senseDir f1 f2 cond) = doubleBranch (\callF1 callF2 -> In.Sense senseDir callF1 callF2 cond) f1 f2
+compile (PickUp f1 f2)              = doubleBranch In.PickUp f1 f2
+compile (Move f1 f2)                = doubleBranch In.Move f1 f2
+compile (Flip invChance f1 f2)      = doubleBranch (In.Flip invChance) f1 f2
+compile (Mark markNumber f)         = singleBranch (In.Mark markNumber) f
+compile (Unmark markNumber f)       = singleBranch (In.Unmark markNumber) f
+compile (Drop f)                    = singleBranch In.Drop f
+compile (Turn lorr f)               = singleBranch (In.Turn lorr) f
+
+doubleBranch :: (AntState -> AntState -> In.Instruction) -> Instruction -> Instruction -> AntState -> CompileState
+doubleBranch toInstruction f1 f2 stateNumber = do
+    (callF1, instructions) <- compile f1 (stateNumber + 1)
+    (callF2, instructions') <- compile f2 (stateNumber + 1 + length instructions)
+    return (stateNumber, toInstruction callF1 callF2 : instructions ++ instructions')
+
+singleBranch :: (AntState -> In.Instruction) -> Instruction -> AntState -> CompileState
+singleBranch toInstruction f stateNumber = do
+    (call, instructions) <- compile f (stateNumber + 1)
+    return (stateNumber, toInstruction call : instructions)
+
+functionCall :: F.Label -> Instruction -> AntState -> CompileState
+functionCall label instr stateNumber = do
+    generatedFragments <- get
+    case Map.lookup label generatedFragments of
+        Just state -> return (stateNumber, []) -- Function is already generated -> no code added -> function state returned (the goto)
+        Nothing    -> do -- Functioncall added to generatedFragments -> code gets added in the compile of the instruction (the goto is now available in the environment)
+            put $ Map.insert label stateNumber generatedFragments
+            compile instr stateNumber
