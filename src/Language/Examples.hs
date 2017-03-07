@@ -9,6 +9,7 @@ import Control.Monad.State
 import Language.Compiler (genCode, genIR)
 import Language.Fragment
 import Language.Instruction hiding (Instruction(..))
+import Language.Optimizer
 
 import qualified Language.Instruction as I
 import qualified Prelude as P
@@ -35,4 +36,4 @@ program = do
     setEntryPoint start
 
 fragmentProgram :: [I.Instruction]
-fragmentProgram = let (P.Right code) = genCode <$> genIR <$> buildProgram program in code
+fragmentProgram = let (P.Right code) = optimize . genCode . genIR <$> buildProgram program in code

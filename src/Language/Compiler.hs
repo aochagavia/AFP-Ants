@@ -7,8 +7,7 @@ module Language.Compiler (
     Instruction(..),
 
     genCode,
-    genIR,
-    start,
+    genIR
     ) where
 
 import Prelude hiding (Left, Right)
@@ -19,7 +18,7 @@ import qualified Language.Instruction as In
 import Language.Instruction hiding (Instruction(..))
 
 data Instruction
-    = Function String Instruction
+    = Function Int Instruction
     | Sense SenseDir Instruction Instruction Condition
     | Mark MarkerNumber Instruction
     | Unmark MarkerNumber Instruction
@@ -41,13 +40,13 @@ genIR (F.Program entry frag) = parseIns (F.Goto entry)
     parseIns (F.Turn lorr ins)                        = Turn lorr (parseIns ins)
     parseIns (F.Move trueIns falseIns)                = Move (parseIns trueIns) (parseIns falseIns)
     parseIns (F.Flip invChance trueIns falseIns)      = Flip invChance (parseIns trueIns) (parseIns falseIns)
-    parseIns (F.Goto uid)                             = Function (show uid) (parseIns (frag Map.! uid))
+    parseIns (F.Goto uid)                             = Function uid (parseIns (frag Map.! uid))
 
 genCode :: Instruction -> [In.Instruction]
 genCode ins = let (_, _, instructions) = compile ins (0, Map.empty) in instructions
 
---       ...             Next add, Possible functioncalls       Called state, Updated functioncalls,   Add this code to output
-compile :: Instruction -> (AntState, Map.Map String AntState) -> (AntState,     Map.Map String AntState, [In.Instruction])
+--       ...             Next add, Possible functioncalls      Called state, Updated functioncalls, Add this code to output
+compile :: Instruction -> (AntState, Map.Map Int AntState) -> (AntState,     Map.Map Int AntState, [In.Instruction])
 -- functioncall
 compile (Function name instr)       state@(nextState, functioncalls) = case Map.lookup name functioncalls of
                                                                           Just state -> (state, functioncalls, []) -- Function is already available -> no code added -> function state returned (the goto)
@@ -95,7 +94,6 @@ defaultProgram' = [ Sense Ahead 1 3 Food -- state 0: [SEARCH] is there food in f
                   , Turn Right 8 -- state 14: turn right and return to state 8
                   , Move 8 11 -- state 15: ...or move forward and return to state 8
                   ]
--}
 
 start :: Instruction
 start = Function "start" (Sense Ahead pickupFood search Food)
@@ -139,3 +137,4 @@ turnCond :: LeftOrRight -> Condition -> Instruction -> Instruction -> Instructio
 turnCond lorr cond trueIns falseIns = turnCond' 6
     where   turnCond' 0 = falseIns
             turnCond' n = Sense Ahead trueIns (Turn lorr (turnCond' (n - 1))) cond
+-}
