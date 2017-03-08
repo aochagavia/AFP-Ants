@@ -28,14 +28,14 @@ choose [] _ = error "cannot choose 0 functions"
 choose [f] nextIns = f nextIns
 choose choices@(f:fs) nextIns = let count = length choices in
                                 if even count then evenlength count else oddlength count
-    where   evenlength count = let (left, right) = splitAt (count `div` 2) in do
+    where   evenlength count = let (left, right) = splitAt (count `div` 2) choices in do
                 leftChoices <- choose left nextIns
                 rightChoices <- choose right nextIns
                 define $ Flip 2 leftChoices rightChoices
             oddlength count = do
                 chosen <- f nextIns
                 other <- choose fs nextIns
-                define $ Flip (length count) chosen other -- Flip in a fair way, 1 / number of possible choices
+                define $ Flip count chosen other -- Flip in a fair way, 1 / number of possible choices
 
 -- Functions to make turning and sensing easier
 
