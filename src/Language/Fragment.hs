@@ -71,7 +71,7 @@ type FragmentAlgebra frag =
     )
 
 foldFragment :: Fragment -> FragmentAlgebra frag -> frag
-foldFragment fragment (sense, mark, unmark, pickUp, drop,  turn, move, flip, goto) = f fragment
+foldFragment fragment (sense, mark, unmark, pickUp, drop,  turn, move, flip', goto) = f fragment
     where f (Sense dir f1 f2 cond) = sense dir (f f1) (f f2) cond
           f (Mark x f1) = mark x (f f1)
           f (Unmark x f1) = unmark x (f f1)
@@ -79,7 +79,7 @@ foldFragment fragment (sense, mark, unmark, pickUp, drop,  turn, move, flip, got
           f (Drop f1) = drop $ f f1
           f (Turn lr f1) = turn lr $ f f1
           f (Move f1 f2) = move (f f1) (f f2)
-          f (Flip ic f1 f2) = flip ic (f f1) (f f2)
+          f (Flip ic f1 f2) = flip' ic (f f1) (f f2)
           f (Goto x) = goto x
 
 type ProgramAlgebra prog lfrag frag =
@@ -92,7 +92,7 @@ type ProgramAlgebra prog lfrag frag =
     )
 
 foldProgram :: Program -> ProgramAlgebra prog lfrag frag -> prog
-foldProgram (Program { pFragments}) (frags, lfrag, fragAlg) = frags $ map reduceLFrag $ Map.toList pFragments
+foldProgram Program{pFragments} (frags, lfrag, fragAlg) = frags $ map reduceLFrag $ Map.toList pFragments
     where reduceLFrag (k, v) = lfrag k $ foldFragment v fragAlg
 
 {- Basic types -}

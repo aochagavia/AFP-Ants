@@ -33,7 +33,7 @@ type CompileState = ReaderT LabelledFragments (State GeneratedFragments) (AntSta
 {- Compiler code -}
 
 genCode :: Program -> [In.Instruction]
-genCode (Program start fragments) = snd $ evalState (runReaderT (compile (Goto start) 0) fragments) Map.empty
+genCode (Program start fragments) = optimize . snd $ evalState (runReaderT (compile (Goto start) 0) fragments) Map.empty
 
 compile :: Fragment -> AntState -> CompileState
 compile (Goto label)                = functionCall label
