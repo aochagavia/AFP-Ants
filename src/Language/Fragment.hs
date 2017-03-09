@@ -179,7 +179,7 @@ checkNoDuplicates dups = case map MultipleDefinitions $ Set.toList dups of
                            [] -> return ()
                            xs -> P.Left xs
 
--- FIXME: implement stuff below (consider using an algebra)
+-- FIXME: implement stuff below
 
 getGotoTargets :: Program -> [Label]
 getGotoTargets p = foldProgram p (concat, const id, (sense, mark, unmark, pickUp, drop, turn, move, flip, goto))

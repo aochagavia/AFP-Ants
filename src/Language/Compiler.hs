@@ -7,11 +7,13 @@ module Language.Compiler (
     LeftOrRight(..),
     Condition(..),
 
+    compileProgram,
     genCode,
     optimize,
     ) where
 
 import Prelude hiding (Left, Right)
+import qualified Prelude as P
 
 import Data.Maybe (mapMaybe)
 import Control.Monad.Reader
@@ -31,6 +33,11 @@ type GeneratedFragments = (Map.Map Label AntState)
 type CompileState = ReaderT LabelledFragments (State GeneratedFragments) (AntState, [In.Instruction])
 
 {- Compiler code -}
+
+compileProgram :: ProgramBuilder () -> [In.Instruction]
+compileProgram = genCode . fromRight . buildProgram
+    where
+    fromRight (P.Right r) = r
 
 genCode :: Program -> [In.Instruction]
 genCode (Program start fragments) = optimize . snd $ evalState (runReaderT (compile (Goto start) 0) fragments) Map.empty
