@@ -40,7 +40,7 @@ toProgram :: Map.Map Int Instruction -> F.Program
 toProgram = F.Program 0 . Map.map toFragment
 
 toFragment :: Instruction -> F.Fragment
-toFragment (Sense dir f1 f2 cond) = F.Sense dir (F.Goto f1) (F.Goto f2) cond
+toFragment (Sense dir f1 f2 cond) = F.Sense dir (F.Goto f1) (F.Goto f2) (F.Cond cond)
 toFragment (Mark n f)             = F.Mark n (F.Goto f)
 toFragment (Unmark n f)           = F.Unmark n (F.Goto f)
 toFragment (PickUp f1 f2)         = F.PickUp (F.Goto f1) (F.Goto f2)

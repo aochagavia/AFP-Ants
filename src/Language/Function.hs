@@ -51,14 +51,14 @@ turn dir nextIns = define (turn' dir nextIns)
             turn' RightRight    nextIns = Turn Right (turn' DirRight nextIns)
             turn' Back          nextIns = Turn Right (turn' RightRight nextIns)
 
-turnCond :: LeftOrRight -> Condition -> CondFunction
+turnCond :: LeftOrRight -> BoolExpr -> CondFunction
 turnCond lorr cond trueIns falseIns = define $ turnCond' 6
     where   turnCond' 0 = falseIns
             turnCond' n = Sense Ahead trueIns (Turn lorr (turnCond' (n - 1))) cond
 
-senseDir :: Directions -> Condition -> CondFunction
+senseDir :: Directions -> BoolExpr -> CondFunction
 senseDir dir cond trueIns falseIns = define (senseDir' dir cond trueIns falseIns)
-    where   senseDir' :: Directions -> Condition -> Fragment -> Fragment -> Fragment
+    where   senseDir' :: Directions -> BoolExpr -> Fragment -> Fragment -> Fragment
             senseDir' LeftLeft      cond trueIns falseIns = Turn Left (senseDir' DirLeft cond (Turn Right trueIns) (Turn Right falseIns))
             senseDir' DirLeft       cond trueIns falseIns = Sense LeftAhead trueIns falseIns cond
             senseDir' DirAhead      cond trueIns falseIns = Sense Ahead trueIns falseIns cond
@@ -69,10 +69,10 @@ senseDir dir cond trueIns falseIns = define (senseDir' dir cond trueIns falseIns
 {- Example functions -}
 
 walkUntilBaseFound, walkUntilFoodFound :: Function
-walkUntilBaseFound = walkUntilCond Home
-walkUntilFoodFound = walkUntilCond Food
+walkUntilBaseFound = walkUntilCond (Cond Home)
+walkUntilFoodFound = walkUntilCond (Cond Food)
 
-walkUntilCond :: Condition -> Function
+walkUntilCond :: BoolExpr -> Function
 walkUntilCond cond ret = do
     start <- declare
     walk <- declare

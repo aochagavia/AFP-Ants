@@ -5,6 +5,7 @@ module Language.Fragment (
     InvChance,
     SenseDir(..),
     LeftOrRight(..),
+    BoolExpr(..),
     Condition(..),
     Fragment(..),
     Program(..),
@@ -36,8 +37,15 @@ data Program = Program {
     pFragments :: Map.Map Label Fragment
 }
 
+data BoolExpr
+    = Cond Condition
+    | Not BoolExpr
+    | And BoolExpr BoolExpr
+    | Or BoolExpr BoolExpr
+    deriving (Eq, Show)
+
 data Fragment
-    = Sense SenseDir Fragment Fragment Condition
+    = Sense SenseDir Fragment Fragment BoolExpr
     | Mark MarkerNumber Fragment
     | Unmark MarkerNumber Fragment
     | PickUp Fragment Fragment
@@ -51,7 +59,7 @@ data Fragment
 type FragmentAlgebra frag =
     (
         -- Sense
-        SenseDir -> frag -> frag -> Condition -> frag,
+        SenseDir -> frag -> frag -> BoolExpr -> frag,
         -- Mark
         MarkerNumber -> frag -> frag,
         -- Unmark

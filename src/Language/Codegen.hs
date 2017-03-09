@@ -28,7 +28,10 @@ genCode (Program start fragments) = snd $ evalState (runReaderT (compile (Goto s
 
 compile :: Fragment -> AntState -> CompileState
 compile (Goto label)                = functionCall label
-compile (Sense senseDir f1 f2 cond) = doubleBranch (\callF1 callF2 -> In.Sense senseDir callF1 callF2 cond) f1 f2
+compile (Sense senseDir f1 f2 (Cond cond)) = doubleBranch (\callF1 callF2 -> In.Sense senseDir callF1 callF2 cond) f1 f2
+compile (Sense senseDir f1 f2 (Not not))   = compile $ Sense senseDir f2 f1 not
+compile (Sense senseDir f1 f2 (And b1 b2)) = compile $ Sense senseDir (Sense senseDir f1 f2 b2) f2 b1
+compile (Sense senseDir f1 f2 (Or b1 b2))  = compile $ Sense senseDir f1 (Sense senseDir f1 f2 b2) b1
 compile (PickUp f1 f2)              = doubleBranch In.PickUp f1 f2
 compile (Move f1 f2)                = doubleBranch In.Move f1 f2
 compile (Flip invChance f1 f2)      = doubleBranch (In.Flip invChance) f1 f2
