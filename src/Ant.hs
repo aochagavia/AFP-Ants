@@ -6,9 +6,8 @@ module Ant (
 import Prelude hiding (Either(..))
 
 import Control.Monad.State
-import Language.Compiler (genCode)
+import Language.Compiler (compileProgram)
 import Language.Fragment
-import Language.Function
 import Language.Instruction hiding (Instruction(..))
 import Language.Optimizer
 
@@ -18,12 +17,12 @@ import qualified Prelude as P
 program :: ProgramBuilder ()
 program = do
     -- Definitions
-    start        <- declare
-    pickupFood   <- declare
-    search       <- declare
-    goHome       <- declare
-    notHome      <- declare
-    foundHome    <- declare
+    start      <- declare
+    pickupFood <- declare
+    search     <- declare
+    goHome     <- declare
+    notHome    <- declare
+    foundHome  <- declare
 
     -- Bodies
     start      `defineAs` Sense Ahead pickupFood search (Cond Food)
@@ -37,4 +36,4 @@ program = do
     setEntryPoint start
 
 fragmentProgram :: [I.Instruction]
-fragmentProgram = let (P.Right code) = genCode <$> buildProgram program in code
+fragmentProgram = compileProgram program

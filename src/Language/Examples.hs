@@ -6,7 +6,7 @@ module Language.Examples (
 import Prelude hiding (Either(..))
 
 import Control.Monad.State
-import Language.Compiler (genCode)
+import Language.Compiler (compileProgram)
 import Language.Fragment
 import Language.Instruction hiding (Instruction(..))
 import Language.Optimizer
@@ -36,4 +36,4 @@ program = do
     setEntryPoint start
 
 fragmentProgram :: [I.Instruction]
-fragmentProgram = let (P.Right code) = genCode <$> buildProgram program in code
+fragmentProgram = compileProgram program

@@ -1,41 +1,22 @@
-module Language.Optimizer (optimize) where
+module Language.Optimizer (optimize, optimize') where
 
 import Data.List (foldl')
 import qualified Data.Map.Strict as Map
 import Data.Maybe (fromJust, mapMaybe)
+import Language.Codegen (genCode)
 import Language.Instruction
+import qualified Language.Fragment as F
 
--- Optimmizations
+-- Optimizations
 optimize :: [Instruction] -> [Instruction]
-optimize instructions = mapMaybe inscompact instructions
-    where   filter (Sense senseDir trueState falseState condition)   = (trueState == falseState, trueState)
-            filter (Flip invChance chooseState otherState)           = (chooseState == otherState, chooseState)
-            filter _                                                 = (False, -1)
-
-            instructionreshuffle _ []     = []
-            instructionreshuffle n (i:is) = let (deadbranch, nextState) =  filter i in if deadbranch
-                then n:instructionreshuffle (n + 1) is
-                else n:instructionreshuffle n is
-
-            reshuffleamount = instructionreshuffle 0 instructions
-
-            -- actions that have two the same branches and no sideeffect can be savely removed
-            inscompact (Sense senseDir trueState falseState condition)  = if trueState == falseState
-                then Nothing
-                else Just $ Sense senseDir (newstate trueState) (newstate falseState) condition
-            inscompact (Flip invChance chooseState otherState)          = if chooseState == otherState
-                then Nothing
-                else Just $ Flip invChance (newstate chooseState) (newstate otherState)
-            -- actions can be called with two the same branches but never be deleted because of side effects
-            inscompact (PickUp trueState falseState)                    = Just $ PickUp (newstate trueState) (newstate falseState)
-            inscompact (Move trueState falseState)                      = Just $ Move (newstate trueState) (newstate falseState)
-            -- actions don't have the possibility to call the same branch on different conditions, never the less their goto has to be updated
-            inscompact (Mark markerNumber nextState)                    = Just $ Mark markerNumber (newstate nextState)
-            inscompact (Unmark markerNumber nextState)                  = Just $ Unmark markerNumber (newstate nextState)
-            inscompact (Drop nextState)                                 = Just $ Drop (newstate nextState)
-            inscompact (Turn lorr nextState)                            = Just $ Turn lorr (newstate nextState)
-            -- calculate newstate based on the shift of the called state
-            newstate nextState = nextState - (reshuffleamount !! nextState)
+optimize = genCode . F.Program 0 . fmap remove . toFragMap
+    where
+    toFragMap = Map.fromList . zip [0..] . map toFragment
+    -- Actions that have two the same branches and no side effects can be safely removed
+    remove :: F.Fragment -> F.Fragment
+    remove f@(F.Sense _ true false _) = if true   == false then true   else f
+    remove f@(F.Flip _ choose other)  = if choose == other then choose else f
+    remove frag                       = frag
 
 {- Optimization based on state machines (incomplete) -}
 
@@ -50,11 +31,25 @@ optimize' instructions = adjustIndices . fromStateMachine instructionMap . optim
 -- We can no longer assume that state numbers are continuous. Therefore we need to adjust
 -- them so they become continuous aga
 -- Casually, this seems very similar to the problem the compiler is facing when compiling a program to ant code!
--- We should be able to reuse the code here...
+-- We should be able to reuse the code here. Therefore, we transform our low level instructions back into
+-- program form, where each instruction gets its own label.
 adjustIndices :: Map.Map Int Instruction -> [Instruction]
-adjustIndices = undefined
+adjustIndices = genCode . toProgram
 
-{- State machine transformations -}
+toProgram :: Map.Map Int Instruction -> F.Program
+toProgram = F.Program 0 . Map.map toFragment
+
+toFragment :: Instruction -> F.Fragment
+toFragment (Sense dir f1 f2 cond) = F.Sense dir (F.Goto f1) (F.Goto f2) (F.Cond cond)
+toFragment (Mark n f)             = F.Mark n (F.Goto f)
+toFragment (Unmark n f)           = F.Unmark n (F.Goto f)
+toFragment (PickUp f1 f2)         = F.PickUp (F.Goto f1) (F.Goto f2)
+toFragment (Drop f)               = F.Drop (F.Goto f)
+toFragment (Turn lor f)           = F.Turn lor (F.Goto f)
+toFragment (Move f1 f2)           = F.Move (F.Goto f1) (F.Goto f2)
+toFragment (Flip chance f1 f2)    = F.Flip chance (F.Goto f1) (F.Goto f2)
+
+{- State machine primitives -}
 
 data State
     -- | A state that has only one next state
@@ -83,6 +78,11 @@ fromStateMachine oldInstructions = Map.fromList . map mkInstruction . Map.keys
     mkInstruction :: Int -> (Int, Instruction)
     mkInstruction stateNumber = (stateNumber, fromJust $ Map.lookup stateNumber oldInstructions)
 
--- FIXME: this optimizer doesn't do anything
+{- State machine optimizations -}
+
+-- WARNING: our state machine representation is unable to reason about side effects.
+-- We need to take that into consideration.
+
+-- FIXME: implement something useful
 optimizeStateMachine :: Map.Map Int State -> Map.Map Int State
 optimizeStateMachine = id

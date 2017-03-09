@@ -42,7 +42,7 @@ data BoolExpr
     | Not BoolExpr
     | And BoolExpr BoolExpr
     | Or BoolExpr BoolExpr
-    deriving Show
+    deriving (Eq, Show)
 
 data Fragment
     = Sense SenseDir Fragment Fragment BoolExpr
@@ -54,7 +54,7 @@ data Fragment
     | Move Fragment Fragment
     | Flip InvChance Fragment Fragment
     | Goto Int
-    deriving Show
+    deriving (Eq, Show)
 
 type FragmentAlgebra frag =
     (
