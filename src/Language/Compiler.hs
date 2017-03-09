@@ -35,18 +35,21 @@ compileProgram = genCode . fromRight . buildProgram
 genCode :: Program -> [Instruction]
 genCode (Program start fragments) = optimize . snd $ evalState (runReaderT (compile (Goto start) 0) fragments) Map.empty
 
-compile :: Fragment -> AntState -> CompileState
-compile (Goto label)                = functionCall label
-compile (Sense senseDir f1 f2 cond) = doubleBranch (\callF1 callF2 -> In.Sense senseDir callF1 callF2 cond) f1 f2
-compile (PickUp f1 f2)              = doubleBranch In.PickUp f1 f2
-compile (Move f1 f2)                = doubleBranch In.Move f1 f2
-compile (Flip invChance f1 f2)      = doubleBranch (In.Flip invChance) f1 f2
-compile (Mark markNumber f)         = singleBranch (In.Mark markNumber) f
-compile (Unmark markNumber f)       = singleBranch (In.Unmark markNumber) f
-compile (Drop f)                    = singleBranch In.Drop f
-compile (Turn lorr f)               = singleBranch (In.Turn lorr) f
+compile :: Fragment -> (AntState -> CompileState)
+compile (Goto label)                       = functionCall label
+compile (Sense senseDir f1 f2 (Cond cond)) = doubleBranch (\callF1 callF2 -> In.Sense senseDir callF1 callF2 cond) f1 f2
+compile (Sense senseDir f1 f2 (Not not))   = compile $ Sense senseDir f2 f1 not
+compile (Sense senseDir f1 f2 (And b1 b2)) = compile $ Sense senseDir (Sense senseDir f1 f2 b2) f2 b1
+compile (Sense senseDir f1 f2 (Or b1 b2))  = compile $ Sense senseDir f1 (Sense senseDir f1 f2 b2) b1
+compile (PickUp f1 f2)                     = doubleBranch In.PickUp f1 f2
+compile (Move f1 f2)                       = doubleBranch In.Move f1 f2
+compile (Flip invChance f1 f2)             = doubleBranch (In.Flip invChance) f1 f2
+compile (Mark markNumber f)                = singleBranch (In.Mark markNumber) f
+compile (Unmark markNumber f)              = singleBranch (In.Unmark markNumber) f
+compile (Drop f)                           = singleBranch In.Drop f
+compile (Turn lorr f)                      = singleBranch (In.Turn lorr) f
 
-doubleBranch :: (AntState -> AntState -> Instruction) -> Fragment -> Fragment -> AntState -> CompileState
+doubleBranch :: (AntState -> AntState -> Instruction) -> Fragment -> Fragment -> (AntState -> CompileState)
 doubleBranch toInstruction f1 f2 stateNumber = do
     (callF1, instructions) <- compile f1 (stateNumber + 1)
     (callF2, instructions') <- compile f2 (stateNumber + 1 + length instructions)
