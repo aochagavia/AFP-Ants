@@ -2,11 +2,45 @@ module Language.Optimizer (optimize) where
 
 import Data.List (foldl')
 import qualified Data.Map.Strict as Map
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, mapMaybe)
 import Language.Instruction
 
+-- Optimmizations
 optimize :: [Instruction] -> [Instruction]
-optimize instructions = adjustIndices . fromStateMachine instructionMap . optimizeStateMachine . toStateMachine $ instructions
+optimize instructions = mapMaybe inscompact instructions
+    where   filter (Sense senseDir trueState falseState condition)   = (trueState == falseState, trueState)
+            filter (Flip invChance chooseState otherState)           = (chooseState == otherState, chooseState)
+            filter _                                                    = (False, -1)
+
+            instructionreshuffle _ []     = []
+            instructionreshuffle n (i:is) = let (deadbranch, nextState) =  filter i in if deadbranch
+                then n:instructionreshuffle (n + 1) is
+                else n:instructionreshuffle n is
+
+            reshuffleamount = instructionreshuffle 0 instructions
+
+            -- actions that have two the same branches and no sideeffect can be savely removed
+            inscompact (Sense senseDir trueState falseState condition)  = if trueState == falseState
+                then Nothing
+                else Just $ Sense senseDir (newstate trueState) (newstate falseState) condition
+            inscompact (Flip invChance chooseState otherState)          = if chooseState == otherState
+                then Nothing
+                else Just $ Flip invChance (newstate chooseState) (newstate otherState)
+            -- actions can be called with two the same branches but never be deleted because of side effects
+            inscompact (PickUp trueState falseState)                    = Just $ PickUp (newstate trueState) (newstate falseState)
+            inscompact (Move trueState falseState)                      = Just $ Move (newstate trueState) (newstate falseState)
+            -- actions don't have the possibility to call the same branch on different conditions, never the less their goto has to be updated
+            inscompact (Mark markerNumber nextState)                    = Just $ Mark markerNumber (newstate nextState)
+            inscompact (Unmark markerNumber nextState)                  = Just $ Unmark markerNumber (newstate nextState)
+            inscompact (Drop nextState)                                 = Just $ Drop (newstate nextState)
+            inscompact (Turn lorr nextState)                            = Just $ Turn lorr (newstate nextState)
+            -- calculate newstate based on the shift of the called state
+            newstate nextState = nextState - (reshuffleamount !! nextState)
+
+{- Optimization based on state machines (incomplete) -}
+
+optimize' :: [Instruction] -> [Instruction]
+optimize' instructions = adjustIndices . fromStateMachine instructionMap . optimizeStateMachine . toStateMachine $ instructions
     where
     instructionMap = Map.fromList (zip [0..] instructions)
 
@@ -14,7 +48,7 @@ optimize instructions = adjustIndices . fromStateMachine instructionMap . optimi
 
 -- Note: after optimization, it may be possible that some states don't exist anymore
 -- We can no longer assume that state numbers are continuous. Therefore we need to adjust
--- them so they become continuous again.
+-- them so they become continuous aga
 -- Casually, this seems very similar to the problem the compiler is facing when compiling a program to ant code!
 -- We should be able to reuse the code here...
 adjustIndices :: Map.Map Int Instruction -> [Instruction]
