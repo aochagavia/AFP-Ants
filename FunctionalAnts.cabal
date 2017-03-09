@@ -50,6 +50,10 @@ test-suite FunctionalAnts-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
+  other-modules:       Spec.Codegen
+                     , Spec.Fragment
+                     , Spec.Optimizer
+                     , Util
   build-depends:       base
                      , FunctionalAnts
                      , QuickCheck
