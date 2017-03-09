@@ -17,6 +17,7 @@ main :: IO ()
 main = do
     definedWorlds
     quickCheck optimizeInstructionsSense
+    quickCheck optimizeInstructionsSense'
     quickCheck optimizeInstructionsFlip
     quickCheck checkNoEntryPoint
     quickCheck checkExampleProgram
@@ -30,6 +31,9 @@ definedWorlds = sequence_ worlds
 
 optimizeInstructionsSense :: Bool
 optimizeInstructionsSense = [] == optimize [In.Sense In.Here 0 0 In.Home]
+
+optimizeInstructionsSense' :: Bool
+optimizeInstructionsSense' = [In.Move 1 1, In.Drop 0] == optimize [In.Sense In.Here 2 2 In.Home, In.Drop 0, In.Move 1 1]
 
 optimizeInstructionsFlip :: Bool
 optimizeInstructionsFlip = [] == optimize [In.Flip 2 0 0]
