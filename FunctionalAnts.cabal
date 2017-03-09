@@ -14,6 +14,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Lib
+                     , Ant
                      , Language.Compiler
                      , Language.Examples
                      , Language.Fragment

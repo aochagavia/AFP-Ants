@@ -16,7 +16,7 @@ main = putStrLn $ unlines $ map show $ compileProgram program
 -- Runs the simulation
 runSim :: IO ()
 runSim = let red = fragmentProgram
-             black = fragmentProgram
+             black = antProgram
              world = Worlds.sample0
              options = buildOptions <$> red <*> black <*> world <*> pure 100000
          in options >>= simulate

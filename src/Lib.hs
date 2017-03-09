@@ -1,6 +1,7 @@
 module Lib (
     defaultProgram,
     fragmentProgram,
+    antProgram,
     genProgram
 ) where
 
@@ -9,6 +10,7 @@ import Data.Array.IO (newListArray)
 
 import Simulator
 
+import qualified Ant as A
 import qualified Language.Examples as E
 import Language.Instruction
 
@@ -23,6 +25,11 @@ fragmentProgram :: IO AntInstructions
 fragmentProgram = let fragProg = E.fragmentProgram
                       range = (0, length fragProg - 1)
                   in newListArray range fragProg
+
+antProgram :: IO AntInstructions
+antProgram = let fragProg = A.fragmentProgram
+                 range = (0, length fragProg - 1)
+             in newListArray range fragProg
 
 defaultProgram' :: [Instruction]
 defaultProgram' = [ Sense Ahead 1 3 Food -- state 0: [SEARCH] is there food in front of me?
