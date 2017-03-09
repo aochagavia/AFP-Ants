@@ -10,7 +10,7 @@ optimize :: [Instruction] -> [Instruction]
 optimize instructions = mapMaybe inscompact instructions
     where   filter (Sense senseDir trueState falseState condition)   = (trueState == falseState, trueState)
             filter (Flip invChance chooseState otherState)           = (chooseState == otherState, chooseState)
-            filter _                                                    = (False, -1)
+            filter _                                                 = (False, -1)
 
             instructionreshuffle _ []     = []
             instructionreshuffle n (i:is) = let (deadbranch, nextState) =  filter i in if deadbranch
