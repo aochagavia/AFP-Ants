@@ -15,6 +15,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Lib
                      , Ant
+                     , Language.Codegen
                      , Language.Compiler
                      , Language.Examples
                      , Language.Fragment

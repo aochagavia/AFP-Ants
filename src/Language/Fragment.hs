@@ -46,7 +46,7 @@ data Fragment
     | Move Fragment Fragment
     | Flip InvChance Fragment Fragment
     | Goto Int
-    deriving Show
+    deriving (Eq, Show)
 
 type FragmentAlgebra frag =
     (
