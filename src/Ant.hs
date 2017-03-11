@@ -45,7 +45,20 @@ programReinier = do
     -- defender
     defender        <- declare
     defender4on3    <- declare
+    scanEnemy       <- declare
+    scanExit        <- declare
+    scanEnter       <- declare
     patrolD         <- declare
+
+    kill            <- declare
+
+    exitMark        <- declare
+    exitSpin        <- declare
+    exitUnmark      <- declare
+
+    enterMark       <- declare
+    enterSpin       <- declare
+    enterUnmark     <- declare
 
     -- centre defender
     cdefender       <- declare
@@ -98,7 +111,7 @@ programReinier = do
     -- patrols clockwise on patches 3
     -- patrol:
     --      align Ahead with patch 3 in direction
-    --      scan for enemy on a scannable patches 4
+    --      scan for enemy on a scannable patches 4 or a patch 3 when on a corner
     --          kill
     --      scan for ant without food on patch 4, which is the RightAhead
     --          exit
@@ -109,24 +122,36 @@ programReinier = do
     --          -- there is a possible ant in front of you, you just left it there
     --          -- don't care if defender could move
     --          patrol
+    defender        `defineAs` Move defender4on3 defender -- Move all defenders onto patches with a 3
+    defender4on3    `execute` turnCond Right (Cond $ Marker 3) scanEnemy error -- align head with patch 3
+    scanEnemy       `defineAs` Sense RightAhead kill (Turn Right (Sense RightAhead kill (Turn Left scanExit) enemyAnts)) enemyAnts
+    scanExit        `defineAs` Sense RightAhead exitMark scanEnter (Cond Friend)
+    scanEnter       `defineAs` Sense LeftAhead enterMark patrolD (Cond FriendWithFood)
+    patrolD         `defineAs` Move defender4on3 defender4on3
+
+    -- enemy RightAhead
     -- kill:
-    --
+    --      ideas?
+    kill            `defineAs` error -- not yet implemented
 
     -- ant has dropped food on patch 4 and wants to search again
     -- exit:
     --      mark own patch with a 4, this means that ant on patch 4 may exit on the front of this defender
     --      wait until there is no ant on the patch 4 RightAhead of the defender
     --      unmark own patch with a 4
+    exitMark        `defineAs` Mark 4 exitSpin
+    exitSpin        `defineAs` Sense RightAhead exitSpin exitUnmark (Cond Friend)
+    exitUnmark      `defineAs` Unmark 4 patrolD
 
     -- ant with food on patch 2 wants to drop food on a patch 4
     -- enter:
     --      mark own patch with a 2, this means that ant on patch 2 may enter on the front of this defender
     --      wait until there is no ant on the patch 4 LeftAhead of the defender
     --      unmark own patch with a 2
+    enterMark        `defineAs` Mark 2 exitSpin
+    enterSpin        `defineAs` Sense RightAhead exitSpin exitUnmark (Cond Friend)
+    enterUnmark      `defineAs` Unmark 2 patrolD
 
-    defender        `defineAs` Move defender4on3 defender -- Move all defenders onto patches with a 3
-    defender4on3    `execute` turnCond Right (Cond $ Marker 3) patrolD error
-    patrolD         `defineAs` Move defender4on3 defender4on3
 
     --- Centre Defender ---
     -- sits with all food on patch 5
