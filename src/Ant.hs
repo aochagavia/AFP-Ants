@@ -17,32 +17,63 @@ import qualified Prelude as P
 
 programReinier :: ProgramBuilder ()
 programReinier = do
-    -- Definitions ---
+    ----- Definitions -----
     -- number of ants = 91
     -- number of circles = 6 (0..5)
     start           <- declare
     error           <- declare -- non reachable state
-    -- init phase
+
+
+    --- Init ---
     selectCircle0   <- declare
     selectCircle1   <- declare
     selectCircle2   <- declare
     selectCircle3   <- declare
     selectCircle4   <- declare
     selectCircle5   <- declare
-    -- scouts
-    scout           <- declare
-    errorScout      <- declare
-    -- collector
+
+
+    --- Collector ---
     collector       <- declare
     errorCollector  <- declare
 
-    pickupFood      <- declare
-    search          <- declare
-    goHome          <- declare
-    notHome         <- declare
-    foundHome       <- declare
+    --pickupFood      <- declare
+    --search          <- declare
+    --goHome          <- declare
+    --notHome         <- declare
+    --foundHome       <- declare
 
-    -- defender
+    -- enter with food
+    enter0          <- declare
+    enter0Scan      <- declare
+    enter0Move      <- declare
+    enter1          <- declare
+    enter1Scan      <- declare
+    enter1Move      <- declare
+    enter2          <- declare
+    enter2Scan      <- declare
+    enter2Move      <- declare
+    enter3          <- declare
+    enter3Sign      <- declare
+    enter3Move      <- declare
+    enter4          <- declare
+    enter4Move      <- declare
+
+    -- exit without food
+    exit4           <- declare
+    exit4Sign       <- declare
+    exit4Move       <- declare
+    exit3           <- declare
+    exit3Move       <- declare
+    exit2           <- declare
+    exit2Move       <- declare
+    exit1           <- declare
+    exit1Move       <- declare
+    exit0           <- declare
+    exit0Move       <- declare
+
+
+    --- Defender ---
     defender        <- declare
     defender4on3    <- declare
     scanEnemy       <- declare
@@ -60,7 +91,8 @@ programReinier = do
     enterSpin       <- declare
     enterUnmark     <- declare
 
-    -- centre defender
+
+    --- Centre defender ---
     cdefender       <- declare
     foodCD          <- declare
     checkPickupCD   <- declare
@@ -68,16 +100,18 @@ programReinier = do
     returnCD        <- declare
     patch5Blocked   <- declare
 
-    --- Bodies ---
+
+
+    ----- Bodies -----
     start           `defineAs` selectCircle0
-    error           `defineAs` Drop error -- non reachable state -- infinite loop
+    error           `defineAs` Drop error -- non reachable state -- infinite loop of nops
     --- init phase
-    selectCircle0   `execute` turnCond Left (Not (Cond Home)) (Mark 0 scout) selectCircle1
-    selectCircle1   `execute` turnCond Left (Cond $ Marker 0) (Mark 1 collector) selectCircle2
-    selectCircle2   `execute` turnCond Left (Cond $ Marker 1) (Mark 2 collector) selectCircle3
-    selectCircle3   `execute` turnCond Left (Cond $ Marker 2) (Mark 3 collector) selectCircle4
-    selectCircle4   `execute` turnCond Left (Cond $ Marker 3) (Mark 4 defender) selectCircle5
-    selectCircle5   `execute` turnCond Left (Cond $ Marker 4) (Mark 5 cdefender) error
+    selectCircle0   `execute`  turnCond Left notHome    (Mark 0 exit0)      selectCircle1
+    selectCircle1   `execute`  turnCond Left (marker 0) (Mark 1 exit1)      selectCircle2
+    selectCircle2   `execute`  turnCond Left (marker 1) (Mark 2 exit2)      selectCircle3
+    selectCircle3   `execute`  turnCond Left (marker 2) (Mark 3 exit3)      selectCircle4
+    selectCircle4   `execute`  turnCond Left (marker 3) (Mark 4 defender)   selectCircle5
+    selectCircle5   `execute`  turnCond Left (marker 4) (Mark 5 cdefender)  error
 
     {- Home looks like this (numbers are marks)
      . . 0 0 0 0 0 0 . .
@@ -93,19 +127,47 @@ programReinier = do
      . . 0 0 0 0 0 0 . .
     -}
 
-    --- scouts
-    scout           `defineAs` Move scout errorScout
-    errorScout      `defineAs` error
-    -- collector
+    --- Collector ---
     collector       `defineAs` Move collector errorCollector
     errorCollector  `defineAs` error
 
 
-    pickupFood      `defineAs` Move (PickUp goHome start) start
-    search          `defineAs` Flip 3 (Turn Left start) (Flip 2 (Turn Right start) (Move start search))
-    goHome          `defineAs` Sense Ahead foundHome notHome (Cond Home)
-    notHome         `defineAs` Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome notHome))
-    foundHome       `defineAs` Move (Drop start) goHome
+    --pickupFood      `defineAs` Move (PickUp goHome start) start
+    --search          `defineAs` Flip 3 (Turn Left start) (Flip 2 (Turn Right start) (Move start search))
+    --goHome          `defineAs` Sense Ahead foundHome notHome (Cond Home)
+    --notHome         `defineAs` Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome notHome))
+    --foundHome       `defineAs` (?)
+
+    -- Enter home after food found
+    --  Dont close in to centre when you can scan another ant with food there
+    enter0          `defineAs` Sense Ahead enter0Scan (Turn Right enter0) (marker 1)
+    enter0Scan      `execute`  turnCond Left (Not (And (marker 1) friendWithFood)) enter0Move enter0
+    enter0Move      `defineAs` Move enter1 enter0
+    enter1          `defineAs` Sense Ahead enter1Scan (Turn Right enter1) (marker 1)
+    enter1Scan      `execute`  turnCond Left (Not (And (marker 1) friendWithFood)) enter1Move enter1
+    enter1Move      `defineAs` Move enter2 enter1
+    enter2          `defineAs` Sense Ahead enter2Scan (Turn Right enter2) (marker 2)
+    enter2Scan      `execute`  turnCond Left (Not (And (marker 2) friendWithFood)) enter2Move enter2
+    enter2Move      `defineAs` Move enter3 enter2
+    enter3          `defineAs` Sense RightAhead (Sense Ahead enter3Sign (Turn Left enter3) (marker 3)) (Turn Left enter3) (marker 3)
+    enter3Sign      `defineAs` Sense RightAhead enter3Move (Turn Left enter3) (And (marker 3) (marker 2))
+    enter3Move      `defineAs` Move enter4 enter3
+    enter4          `defineAs` Sense Ahead enter4Move (Turn Right enter4) (And (marker 4) noAnts)
+    enter4Move      `defineAs` Move (Drop exit4) enter4
+
+    -- Exit home after food dropped or after start
+    exit4           `defineAs` Sense LeftAhead exit4Sign (Turn Right exit4) (marker 3)
+    exit4Sign       `defineAs` Sense LeftAhead (Sense Ahead exit4Move exit4 (marker 3)) (Turn Right exit4) (And (marker 3) (marker 4))
+    exit4Move       `defineAs` Move exit3 exit4 -- Wait for the defender in front of the defender that leaves you through
+    exit3           `defineAs` Sense Ahead exit3Move (Turn Right exit3) (And (marker 2) noAnts)
+    exit3Move       `defineAs` Move exit2 exit3 -- Wait for a free location in circle 2
+    exit2           `defineAs` Sense Ahead exit2Move (Turn Right exit2) (And (marker 1) noAnts)
+    exit2Move       `defineAs` Move exit1 exit2 -- Wait for a free location in circle 1
+    exit1           `defineAs` Sense Ahead exit1Move (Turn Right exit1) (And (marker 0) noAnts)
+    exit1Move       `defineAs` Move exit0 exit1 -- Wait for a free location in circle 0
+    exit0           `defineAs` Sense Ahead exit1Move (Turn Right exit0) (And (Not $ Cond Home) noAnts)
+    exit0Move       `defineAs` Move collector exit0 -- Wait for a free location in outside of your home
+
 
     --- Defender ---
     -- patrols clockwise on patches 3
@@ -123,10 +185,10 @@ programReinier = do
     --          -- don't care if defender could move
     --          patrol
     defender        `defineAs` Move defender4on3 defender -- Move all defenders onto patches with a 3
-    defender4on3    `execute` turnCond Right (Cond $ Marker 3) scanEnemy error -- align head with patch 3
+    defender4on3    `execute`  turnCond Right (marker 3) scanEnemy error -- align head with patch 3
     scanEnemy       `defineAs` Sense RightAhead kill (Turn Right (Sense RightAhead kill (Turn Left scanExit) enemyAnts)) enemyAnts
-    scanExit        `defineAs` Sense RightAhead exitMark scanEnter (Cond Friend)
-    scanEnter       `defineAs` Sense LeftAhead enterMark patrolD (Cond FriendWithFood)
+    scanExit        `defineAs` Sense RightAhead exitMark scanEnter friend
+    scanEnter       `defineAs` Sense LeftAhead enterMark patrolD friendWithFood
     patrolD         `defineAs` Move defender4on3 defender4on3
 
     -- enemy RightAhead
@@ -140,7 +202,7 @@ programReinier = do
     --      wait until there is no ant on the patch 4 RightAhead of the defender
     --      unmark own patch with a 4
     exitMark        `defineAs` Mark 4 exitSpin
-    exitSpin        `defineAs` Sense RightAhead exitSpin exitUnmark (Cond Friend)
+    exitSpin        `defineAs` Sense RightAhead exitSpin exitUnmark friend
     exitUnmark      `defineAs` Unmark 4 patrolD
 
     -- ant with food on patch 2 wants to drop food on a patch 4
@@ -149,7 +211,7 @@ programReinier = do
     --      wait until there is no ant on the patch 4 LeftAhead of the defender
     --      unmark own patch with a 2
     enterMark        `defineAs` Mark 2 exitSpin
-    enterSpin        `defineAs` Sense RightAhead exitSpin exitUnmark (Cond Friend)
+    enterSpin        `defineAs` Sense RightAhead exitSpin exitUnmark friend
     enterUnmark      `defineAs` Unmark 2 patrolD
 
 
@@ -165,10 +227,10 @@ programReinier = do
     -- cdefender wont:
     --      execute the pickup if enemy is in scanning range
     cdefender       `defineAs` Sense Ahead foodCD (Turn Right cdefender) foodNoAnts -- Find pickupable food
-    foodCD          `execute` turnCond Right enemyAnts cdefender checkPickupCD -- Do not execute pickup if enemyAnt is detected, wait for the kill *Muhahaaa*
+    foodCD          `execute`  turnCond Right enemyAnts cdefender checkPickupCD -- Do not execute pickup if enemyAnt is detected, wait for the kill *Muhahaaa*
     checkPickupCD   `defineAs` Sense Ahead pickupCD cdefender foodNoAnts -- Food is not pickupable anymore, too bad try to find another pickupable food
     pickupCD        `defineAs` Move (PickUp returnCD returnCD) cdefender -- Execute pickup as quickly as possible
-    returnCD        `execute` turn Back patch5Blocked
+    returnCD        `execute`  turn Back patch5Blocked
     -- this is a highly unlikely state
     -- a full sweep of surrounding is made testing for enemies before exiting patch 5
     -- friendlies should not enter patch 5 at all
@@ -178,13 +240,23 @@ programReinier = do
     --- Entry point ---
     setEntryPoint start
 
-enemyAnts, friendlyAnts, ants, food, foodOrAnts, foodNoAnts :: BoolExpr
-enemyAnts = Or (Cond Foe) (Cond FoeWithFood)
-friendlyAnts = Or (Cond Friend) (Cond FriendWithFood)
-ants = Or enemyAnts friendlyAnts
-food = Cond Food
-foodOrAnts = And food ants
-foodNoAnts = And food (Not ants)
+marker :: MarkerNumber -> BoolExpr
+marker = Cond . Marker
+
+foe, foeWithFood, friend, friendWithFood, enemyAnts, friendlyAnts, ants, noAnts, food, foodOrAnts, foodNoAnts, home, notHome :: BoolExpr
+foe             = Cond Foe
+foeWithFood     = Cond FoeWithFood
+friend          = Cond Friend
+friendWithFood  = Cond FriendWithFood
+enemyAnts       = Or foe foeWithFood
+friendlyAnts    = Or friend friendWithFood
+ants            = Or enemyAnts friendlyAnts
+noAnts          = Not ants
+food            = Cond Food
+foodOrAnts      = And food ants
+foodNoAnts      = And food noAnts
+home            = Cond Home
+notHome         = Not home
 
 fragmentProgram :: [I.Instruction]
 fragmentProgram = compileProgram programReinier
