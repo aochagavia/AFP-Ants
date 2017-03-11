@@ -2,6 +2,7 @@ module Main where
 
 import Prelude hiding (Either(..))
 
+import Ant hiding (fragmentProgram)
 import Lib
 import Language.Compiler
 import Language.Fragment
@@ -11,7 +12,7 @@ import qualified Worlds
 
 -- Dumps the compiled program to stdout
 main :: IO ()
-main = putStrLn $ unlines $ map show $ compileProgram program
+main = putStrLn $ unlines $ map show $ compileProgram programReinier
 
 -- Runs the simulation
 runSim :: IO ()

@@ -2,7 +2,7 @@ module Lib (
     defaultProgram,
     fragmentProgram,
     antProgram,
-    genProgram
+    genProgram,
 ) where
 
 import Prelude hiding (Left, Right)
