@@ -29,7 +29,6 @@ programReinier = do
     selectCircle2   <- declare
     selectCircle3   <- declare
     selectCircle4   <- declare
-    selectCircle5   <- declare
 
     --- Collector ---
     collector       <- declare
@@ -96,8 +95,7 @@ programReinier = do
     selectCircle1   `execute`  turnCond Left (marker 0) (Mark 1 exit1)      selectCircle2
     selectCircle2   `execute`  turnCond Left (marker 1) (Mark 2 exit2)      selectCircle3
     selectCircle3   `execute`  turnCond Left (marker 2) (Mark 3 exit3)      selectCircle4
-    selectCircle4   `execute`  turnCond Left (marker 3) (Mark 4 defender)   selectCircle5
-    selectCircle5   `execute`  turnCond Left (marker 4) (Mark 5 cdefender)  error
+    selectCircle4   `execute`  turnCond Left (marker 3) (Mark 4 defender)   (Mark 5 cdefender)
     {- Home looks like this (numbers are marks)
      . . 0 0 0 0 0 0 . .
     . . 0 1 1 1 1 1 0 . .
