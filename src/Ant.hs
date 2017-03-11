@@ -10,6 +10,7 @@ import Language.Compiler (compileProgram)
 import Language.Fragment
 import Language.Instruction hiding (Instruction(..))
 import Language.Optimizer
+import Language.Function
 
 import qualified Language.Instruction as I
 import qualified Prelude as P
