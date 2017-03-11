@@ -23,7 +23,6 @@ programReinier = do
     start           <- declare
     error           <- declare -- non reachable state
 
-
     --- Init ---
     selectCircle0   <- declare
     selectCircle1   <- declare
@@ -32,17 +31,8 @@ programReinier = do
     selectCircle4   <- declare
     selectCircle5   <- declare
 
-
     --- Collector ---
     collector       <- declare
-    errorCollector  <- declare
-
-    --pickupFood      <- declare
-    --search          <- declare
-    --goHome          <- declare
-    --notHome         <- declare
-    --foundHome       <- declare
-
     -- enter with food
     enter0          <- declare
     enter0Scan      <- declare
@@ -58,7 +48,6 @@ programReinier = do
     enter3Move      <- declare
     enter4          <- declare
     enter4Move      <- declare
-
     -- exit without food
     exit4           <- declare
     exit4Sign       <- declare
@@ -72,7 +61,6 @@ programReinier = do
     exit0           <- declare
     exit0Move       <- declare
 
-
     --- Defender ---
     defender        <- declare
     defender4on3    <- declare
@@ -80,17 +68,16 @@ programReinier = do
     scanExit        <- declare
     scanEnter       <- declare
     patrolD         <- declare
-
+    -- kill
     kill            <- declare
-
+    -- exit
     exitMark        <- declare
     exitSpin        <- declare
     exitUnmark      <- declare
-
+    -- enter
     enterMark       <- declare
     enterSpin       <- declare
     enterUnmark     <- declare
-
 
     --- Centre defender ---
     cdefender       <- declare
@@ -100,11 +87,10 @@ programReinier = do
     returnCD        <- declare
     patch5Blocked   <- declare
 
-
-
     ----- Bodies -----
     start           `defineAs` selectCircle0
     error           `defineAs` Drop error -- non reachable state -- infinite loop of nops
+
     --- init phase
     selectCircle0   `execute`  turnCond Left notHome    (Mark 0 exit0)      selectCircle1
     selectCircle1   `execute`  turnCond Left (marker 0) (Mark 1 exit1)      selectCircle2
@@ -112,7 +98,6 @@ programReinier = do
     selectCircle3   `execute`  turnCond Left (marker 2) (Mark 3 exit3)      selectCircle4
     selectCircle4   `execute`  turnCond Left (marker 3) (Mark 4 defender)   selectCircle5
     selectCircle5   `execute`  turnCond Left (marker 4) (Mark 5 cdefender)  error
-
     {- Home looks like this (numbers are marks)
      . . 0 0 0 0 0 0 . .
     . . 0 1 1 1 1 1 0 . .
@@ -128,20 +113,11 @@ programReinier = do
     -}
 
     --- Collector ---
-    collector       `defineAs` Move collector errorCollector
-    errorCollector  `defineAs` error
-
-
-    --pickupFood      `defineAs` Move (PickUp goHome start) start
-    --search          `defineAs` Flip 3 (Turn Left start) (Flip 2 (Turn Right start) (Move start search))
-    --goHome          `defineAs` Sense Ahead foundHome notHome (Cond Home)
-    --notHome         `defineAs` Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome notHome))
-    --foundHome       `defineAs` (?)
-
+    collector       `execute`  turn Back enter0
     -- Enter home after food found
     --  Dont close in to centre when you can scan another ant with food there
-    enter0          `defineAs` Sense Ahead enter0Scan (Turn Right enter0) (marker 1)
-    enter0Scan      `execute`  turnCond Left (Not (And (marker 1) friendWithFood)) enter0Move enter0
+    enter0          `defineAs` Sense Ahead enter0Scan (Turn Right enter0) (marker 0)
+    enter0Scan      `execute`  turnCond Left (Not (And (marker 0) friendWithFood)) enter0Move enter0
     enter0Move      `defineAs` Move enter1 enter0
     enter1          `defineAs` Sense Ahead enter1Scan (Turn Right enter1) (marker 1)
     enter1Scan      `execute`  turnCond Left (Not (And (marker 1) friendWithFood)) enter1Move enter1
@@ -165,9 +141,8 @@ programReinier = do
     exit2Move       `defineAs` Move exit1 exit2 -- Wait for a free location in circle 1
     exit1           `defineAs` Sense Ahead exit1Move (Turn Right exit1) (And (marker 0) noAnts)
     exit1Move       `defineAs` Move exit0 exit1 -- Wait for a free location in circle 0
-    exit0           `defineAs` Sense Ahead exit1Move (Turn Right exit0) (And (Not $ Cond Home) noAnts)
+    exit0           `defineAs` Sense Ahead exit0Move (Turn Right exit0) (And notHome noAnts)
     exit0Move       `defineAs` Move collector exit0 -- Wait for a free location in outside of your home
-
 
     --- Defender ---
     -- patrols clockwise on patches 3
@@ -210,10 +185,9 @@ programReinier = do
     --      mark own patch with a 2, this means that ant on patch 2 may enter on the front of this defender
     --      wait until there is no ant on the patch 4 LeftAhead of the defender
     --      unmark own patch with a 2
-    enterMark        `defineAs` Mark 2 exitSpin
-    enterSpin        `defineAs` Sense RightAhead exitSpin exitUnmark friend
+    enterMark        `defineAs` Mark 2 enterSpin
+    enterSpin        `defineAs` Sense RightAhead enterSpin enterUnmark friend
     enterUnmark      `defineAs` Unmark 2 patrolD
-
 
     --- Centre Defender ---
     -- sits with all food on patch 5
@@ -235,7 +209,7 @@ programReinier = do
     -- a full sweep of surrounding is made testing for enemies before exiting patch 5
     -- friendlies should not enter patch 5 at all
     -- enemies can enter the patch with the following action: a double move from a patch 3, only 50% of the patches allow such a simple move other patches need a turn as well
-    patch5Blocked   `defineAs` Move cdefender patch5Blocked -- intruder detected stealing from base centre, keep trying to enter patch 5
+    patch5Blocked   `defineAs` Move cdefender patch5Blocked -- intruder detected stealing from base centre if this loops, keep trying to enter patch 5
 
     --- Entry point ---
     setEntryPoint start
