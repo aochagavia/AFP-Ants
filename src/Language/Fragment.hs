@@ -139,7 +139,7 @@ declare = do freshLabel <- get
              return (Goto freshLabel)
 
 execute :: Fragment -> ProgramBuilder Fragment -> ProgramBuilder ()
-execute goto exec = do
+execute goto@(Goto _) exec = do
     label <- exec
     defineAs goto label
     return ()

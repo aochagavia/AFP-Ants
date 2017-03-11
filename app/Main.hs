@@ -12,7 +12,8 @@ import qualified Worlds
 
 -- Dumps the compiled program to stdout
 main :: IO ()
-main = putStrLn $ unlines $ map show $ compileProgram programReinier
+main = print (length (compileProgram programReinier))
+--main = putStrLn $ unlines $ map show $ compileProgram programReinier
 
 -- Runs the simulation
 runSim :: IO ()

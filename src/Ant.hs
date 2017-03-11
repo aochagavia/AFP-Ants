@@ -139,7 +139,7 @@ programReinier = do
     --      continue scanning
     -- cdefender wont:
     --      execute the pickup if enemy is in scanning range
-    cdefender       `execute` turnCond Right foodNoAnts foodCD cdefender -- Find pickupable food
+    cdefender       `defineAs` Sense Ahead foodCD (Turn Right cdefender) foodNoAnts -- Find pickupable food
     foodCD          `execute` turnCond Right enemyAnts cdefender checkPickupCD -- Do not execute pickup if enemyAnt is detected, wait for the kill *Muhahaaa*
     checkPickupCD   `defineAs` Sense Ahead pickupCD cdefender foodNoAnts -- Food is not pickupable anymore, too bad try to find another pickupable food
     pickupCD        `defineAs` Move (PickUp returnCD returnCD) cdefender -- Execute pickup as quickly as possible
