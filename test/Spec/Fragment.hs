@@ -12,6 +12,7 @@ testFragment = do
     quickCheck checkNoEntryPoint
     quickCheck checkExampleProgram
     quickCheck checkUndefinedGoto
+    quickCheck checkNoDeadCode
     quickCheck checkNoUnusedLabels
     quickCheck checkNoUnusedLabelsEntryPoint
 
@@ -27,6 +28,16 @@ checkUndefinedGoto = errors == [UndefinedLabel 42]
     where errors = eitherToList $ buildProgram program
           program = do
                     start <- define $ Turn Right (Goto 42)
+                    setEntryPoint start
+
+checkNoDeadCode :: Property
+checkNoDeadCode = counterexample (show errors ++ " == [DeadCode 1]") (errors == [DeadCode 1])
+    where errors = eitherToList $ buildProgram program
+          program = do
+                    start <- declare
+                    la <- declare
+                    start `defineAs` Turn Right start
+                    la `defineAs` Turn Right la -- Dead code
                     setEntryPoint start
 
 checkNoUnusedLabels :: Property
