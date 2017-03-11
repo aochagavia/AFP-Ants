@@ -210,6 +210,7 @@ getFragmentGotoTargets f = foldFragment f (sense, mark, unmark, pickUp, drop, tu
 getGotoTargets :: Program -> [Label]
 getGotoTargets = concatMap getFragmentGotoTargets . Map.elems . pFragments
 
+-- Each label occurs in the output list only once. The output list is not ordered.
 getUsedGotoTargets :: Program -> [Label]
 getUsedGotoTargets p = Set.toList $ f [pEntryPoint p] Set.empty
     where f [] ys     = ys
@@ -217,17 +218,15 @@ getUsedGotoTargets p = Set.toList $ f [pEntryPoint p] Set.empty
                         let xs' = xs ++ getFragmentGotoTargets (pFragments p Map.! x) in
                         f (dropWhile (`Set.member` ys') xs') ys'
 
+-- Returns the defined fragments in ascending order.
 getFragmentLabels :: Program -> [Label]
 getFragmentLabels (Program _ fragments) = Map.keys fragments
 
 checkGotosDefined :: Program -> Either [ProgramBuildError] Program
 checkGotosDefined p@(Program entryPoint fragments) =
-    let targetSet = Set.fromList $ getGotoTargets p
-        labelSet = Set.fromList $ getFragmentLabels p
-        undefinedGotos = targetSet `Set.difference` labelSet
-    in case map UndefinedLabel $ Set.toList undefinedGotos of
-        [] -> return p
-        xs -> P.Left xs
+    let ds = (sort . Set.toList . Set.fromList . getGotoTargets) p \\ sort (getFragmentLabels p) in
+    if null ds then P.Right p
+    else P.Left (map UndefinedLabel ds)
 
 checkNoDeadCode :: Label -> Program -> Either [ProgramBuildError] Program
 checkNoDeadCode ep p =
