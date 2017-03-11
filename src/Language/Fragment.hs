@@ -222,21 +222,19 @@ getUsedGotoTargets p = Set.toList $ f [pEntryPoint p] Set.empty
 getFragmentLabels :: Program -> [Label]
 getFragmentLabels (Program _ fragments) = Map.keys fragments
 
+check :: [Label] -> [Label] -> (Label -> ProgramBuildError) -> Program -> Either [ProgramBuildError] Program
+check xs ys c p =
+    let es = xs \\ ys in
+    if null es then P.Right p
+    else P.Left (map c es)
+
 checkGotosDefined :: Program -> Either [ProgramBuildError] Program
-checkGotosDefined p@(Program entryPoint fragments) =
-    let ds = (sort . Set.toList . Set.fromList . getGotoTargets) p \\ sort (getFragmentLabels p) in
-    if null ds then P.Right p
-    else P.Left (map UndefinedLabel ds)
+checkGotosDefined p = check ((sort . dedup . getGotoTargets) p) (sort $ getFragmentLabels p) UndefinedLabel p
+    where dedup = Set.toList . Set.fromList
 
 checkNoDeadCode :: Label -> Program -> Either [ProgramBuildError] Program
-checkNoDeadCode ep p =
-    let ds = Map.keys (pFragments p) \\ sort (ep : getUsedGotoTargets p) in
-    if null ds then P.Right p
-    else P.Left (map DeadCode ds)
+checkNoDeadCode ep p = check (Map.keys $ pFragments p) (sort $ ep : getUsedGotoTargets p) DeadCode p
 
 -- topLabel is the output of the State monad and therefore equals the number of declared labels
 checkNoUnusedLabels :: Label -> Program -> Either [ProgramBuildError] Program
-checkNoUnusedLabels topLabel p =
-    let us = [0..topLabel-1] \\ Map.keys (pFragments p) in
-    if null us then P.Right p
-    else P.Left (map UnusedLabel us)
+checkNoUnusedLabels topLabel p = check [0..topLabel-1] (Map.keys $ pFragments p) UnusedLabel p
