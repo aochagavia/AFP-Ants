@@ -207,18 +207,8 @@ getFragmentGotoTargets f = foldFragment f (sense, mark, unmark, pickUp, drop, tu
         flip = const (++)
         goto = (:[])
 
-getGotoTargets :: Program -> [Label] --  map (pFragments p) getFragmentGotoTargets
-getGotoTargets p = foldProgram p (concat, const id, (sense, mark, unmark, pickUp, drop, turn, move, flip, goto))
-    where
-        sense _ f1 f2 _ = f1 ++ f2
-        mark = const id
-        unmark = const id
-        pickUp = (++)
-        drop = id
-        turn = const id
-        move = (++)
-        flip = const (++)
-        goto = (:[])
+getGotoTargets :: Program -> [Label]
+getGotoTargets = concatMap getFragmentGotoTargets . Map.elems . pFragments
 
 getUsedGotoTargets :: Program -> [Label]
 getUsedGotoTargets p = Set.toList $ f [pEntryPoint p] Set.empty
