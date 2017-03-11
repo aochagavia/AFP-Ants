@@ -14,6 +14,7 @@ module Language.Fragment (
     Label,
     buildProgram,
     declare,
+    execute,
     defineAs,
     define,
     setEntryPoint,
@@ -136,6 +137,12 @@ declare :: ProgramBuilder Fragment
 declare = do freshLabel <- get
              put (freshLabel + 1)
              return (Goto freshLabel)
+
+execute :: Fragment -> ProgramBuilder Fragment -> ProgramBuilder ()
+execute goto exec = do
+    label <- exec
+    defineAs goto label
+    return ()
 
 defineAs :: Fragment -> Fragment -> ProgramBuilder ()
 defineAs (Goto d) i = tell $ mempty { fragments = Map.singleton d i }

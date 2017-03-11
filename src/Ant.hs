@@ -59,12 +59,12 @@ programReinier = do
     start           `defineAs` selectCircle0
     error           `defineAs` Drop error -- non reachable state -- infinite loop
     --- init phase
-    selectCircle0   <- turnCond Left (Not (Cond Home)) (Mark 0 scout) selectCircle1
-    selectCircle1   <- turnCond Left (And (Cond Home) (Cond $ Marker 0)) (Mark 1 collector) selectCircle2
-    selectCircle2   <- turnCond Left (And (Cond Home) (Cond $ Marker 1)) (Mark 2 collector) selectCircle3
-    selectCircle3   <- turnCond Left (And (Cond Home) (Cond $ Marker 2)) (Mark 3 collector) selectCircle4
-    selectCircle4   <- turnCond Left (And (Cond Home) (Cond $ Marker 3)) (Mark 4 defender) selectCircle5
-    selectCircle5   <- turnCond Left (And (Cond Home) (Cond $ Marker 4)) (Mark 5 cdefender) error
+    selectCircle0   `execute` turnCond Left (Not (Cond Home)) (Mark 0 scout) selectCircle1
+    selectCircle1   `execute` turnCond Left (And (Cond Home) (Cond $ Marker 0)) (Mark 1 collector) selectCircle2
+    selectCircle2   `execute` turnCond Left (And (Cond Home) (Cond $ Marker 1)) (Mark 2 collector) selectCircle3
+    selectCircle3   `execute` turnCond Left (And (Cond Home) (Cond $ Marker 2)) (Mark 3 collector) selectCircle4
+    selectCircle4   `execute` turnCond Left (And (Cond Home) (Cond $ Marker 3)) (Mark 4 defender) selectCircle5
+    selectCircle5   `execute` turnCond Left (And (Cond Home) (Cond $ Marker 4)) (Mark 5 cdefender) error
 
     {- Home looks like this (numbers are marks)
      . . 0 0 0 0 0 0 . .
@@ -125,7 +125,7 @@ programReinier = do
     --      unmark own patch with a 2
 
     defender        `defineAs` Move defender4on3 defender -- Move all defenders onto patches with a 3
-    defender4on3    <- turnCond Right (Cond $ Marker 3) patrolD error
+    defender4on3    `execute` turnCond Right (Cond $ Marker 3) patrolD error
     patrolD         `defineAs` Move defender4on3 defender4on3
 
     --- Centre Defender ---
@@ -139,11 +139,11 @@ programReinier = do
     --      continue scanning
     -- cdefender wont:
     --      execute the pickup if enemy is in scanning range
-    cdefender       <- turnCond Right foodNoAnts foodCD cdefender -- Find pickupable food
-    foodCD          <- turnCond Right enemyAnts cdefender checkPickupCD -- Do not execute pickup if enemyAnt is detected, wait for the kill *Muhahaaa*
+    cdefender       `execute` turnCond Right foodNoAnts foodCD cdefender -- Find pickupable food
+    foodCD          `execute` turnCond Right enemyAnts cdefender checkPickupCD -- Do not execute pickup if enemyAnt is detected, wait for the kill *Muhahaaa*
     checkPickupCD   `defineAs` Sense Ahead pickupCD cdefender foodNoAnts -- Food is not pickupable anymore, too bad try to find another pickupable food
     pickupCD        `defineAs` Move (PickUp returnCD returnCD) cdefender -- Execute pickup as quickly as possible
-    returnCD        <- turn Back $ Move cdefender patch5Blocked
+    returnCD        `execute` turn Back (Move cdefender patch5Blocked)
     -- this is a highly unlikely state
     -- a full sweep of surrounding is made testing for enemies before exiting patch 5
     -- friendlies should not enter patch 5 at all
