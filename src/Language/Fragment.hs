@@ -23,7 +23,7 @@ module Language.Fragment (
 import Prelude hiding (Left, Right)
 import Control.Monad.State
 import Control.Monad.Writer
-import Data.List ((\\))
+import Data.List ((\\), sort)
 
 import Language.Instruction hiding (Instruction(..))
 
@@ -184,8 +184,8 @@ buildProgram programBuilder =
         [ep]     -> checkNoDuplicates duplicates
                     >>= const (return (Program ep frags))
                     >>= checkGotosDefined
-                    >>= checkNoDeadCode
                     >>= checkNoUnusedLabels topLabel
+                    >>= checkNoDeadCode ep
 
 {- Before returning the program, we better make sure it is properly defined -}
 
@@ -194,9 +194,20 @@ checkNoDuplicates dups = case map MultipleDefinitions $ Set.toList dups of
                            [] -> return ()
                            xs -> P.Left xs
 
--- FIXME: implement stuff below
+getFragmentGotoTargets:: Fragment -> [Label]
+getFragmentGotoTargets f = foldFragment f (sense, mark, unmark, pickUp, drop, turn, move, flip, goto)
+    where
+        sense _ f1 f2 _ = f1 ++ f2
+        mark = const id
+        unmark = const id
+        pickUp = (++)
+        drop = id
+        turn = const id
+        move = (++)
+        flip = const (++)
+        goto = (:[])
 
-getGotoTargets :: Program -> [Label]
+getGotoTargets :: Program -> [Label] --  map (pFragments p) getFragmentGotoTargets
 getGotoTargets p = foldProgram p (concat, const id, (sense, mark, unmark, pickUp, drop, turn, move, flip, goto))
     where
         sense _ f1 f2 _ = f1 ++ f2
@@ -208,6 +219,13 @@ getGotoTargets p = foldProgram p (concat, const id, (sense, mark, unmark, pickUp
         move = (++)
         flip = const (++)
         goto = (:[])
+
+getUsedGotoTargets :: Program -> [Label]
+getUsedGotoTargets p = Set.toList $ f [pEntryPoint p] Set.empty
+    where f [] ys     = ys
+          f (x:xs) ys = let ys' = Set.union (Set.singleton x) ys in
+                        let xs' = xs ++ getFragmentGotoTargets (pFragments p Map.! x) in
+                        f (dropWhile (`Set.member` ys') xs') ys'
 
 getFragmentLabels :: Program -> [Label]
 getFragmentLabels (Program _ fragments) = Map.keys fragments
@@ -221,8 +239,11 @@ checkGotosDefined p@(Program entryPoint fragments) =
         [] -> return p
         xs -> P.Left xs
 
-checkNoDeadCode :: Program -> Either [ProgramBuildError] Program
-checkNoDeadCode = return
+checkNoDeadCode :: Label -> Program -> Either [ProgramBuildError] Program
+checkNoDeadCode ep p =
+    let ds = Map.keys (pFragments p) \\ sort (ep : getUsedGotoTargets p) in
+    if null ds then P.Right p
+    else P.Left (map DeadCode ds)
 
 -- topLabel is the output of the State monad and therefore equals the number of declared labels
 checkNoUnusedLabels :: Label -> Program -> Either [ProgramBuildError] Program
