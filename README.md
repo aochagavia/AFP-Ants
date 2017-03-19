@@ -9,7 +9,7 @@
 
 
 ### Windows
-1. Get a real operating system :-)
+1. Install Linux :-)
 
 ## How to run
 `stack build && stack exec FunctionalAnts-exe`
