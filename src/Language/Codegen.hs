@@ -42,7 +42,7 @@ compile (Turn lorr f)               = singleBranch (In.Turn lorr) f
 
 doubleBranch :: (AntState -> AntState -> Instruction) -> Fragment -> Fragment -> AntState -> CompileState
 doubleBranch toInstruction f1 f2 stateNumber = do
-    (callF1, instructions) <- compile f1 (stateNumber + 1)
+    (callF1, instructions)  <- compile f1 (stateNumber + 1)
     (callF2, instructions') <- compile f2 (stateNumber + 1 + length instructions)
     return (stateNumber, toInstruction callF1 callF2 : instructions ++ instructions')
 
