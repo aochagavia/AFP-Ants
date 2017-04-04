@@ -30,6 +30,12 @@ programReinier = do
     selectCircle3   <- declare
     selectCircle4   <- declare
 
+    -- guardLeft
+    foodPlace       <- declare
+    guardLeft       <- declare
+    forceMove       <- declare
+    scanGuard       <- declare
+
     --- Collector ---
     collectorFind   <- declare
     otherFind       <- declare
@@ -97,7 +103,7 @@ programReinier = do
     error           `defineAs` Drop error -- non reachable state -- infinite loop of nops
 
     --- init phase
-    selectCircle0   `execute`  turnCond Left notHome    (Mark 0 exit0)      selectCircle1
+    selectCircle0   `execute`  turnCond Left notHome    (Mark 0 foodPlace)  selectCircle1
     selectCircle1   `execute`  turnCond Left (marker 0) (Mark 1 exit1)      selectCircle2
     selectCircle2   `execute`  turnCond Left (marker 1) (Mark 2 exit2)      selectCircle3
     selectCircle3   `execute`  turnCond Left (marker 2) (Mark 3 exit3)      selectCircle4
@@ -115,6 +121,12 @@ programReinier = do
     . . 0 1 1 1 1 1 0 . .
      . . 0 0 0 0 0 0 . .
     -}
+
+    --- food place to guardLeft ---
+    foodPlace       `defineAs` Turn Left (Sense LeftAhead (Mark 5 guardLeft) scanGuard notHome)
+    guardLeft       `defineAs` Move (Mark 1 (Turn Left (Turn Left forceMove))) guardLeft
+    forceMove       `defineAs` Move error forceMove
+    scanGuard       `execute`  turnCond Left (marker 5) error exit0
 
     --- Collector ---
     -- search
