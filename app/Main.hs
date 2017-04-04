@@ -6,6 +6,7 @@ import Ant hiding (fragmentProgram)
 import Lib
 import Language.Compiler
 import Language.Fragment
+import Language.Instruction(showInstruction)
 import Simulator.Options
 import Simulator.Runner
 import qualified Worlds
@@ -15,7 +16,7 @@ import qualified Language.Instruction as I
 -- Dumps the compiled program to stdout
 main :: IO ()
 --main = print (length (compileProgram programReinier))
---main = putStrLn $ unlines $ map show $ compileProgram programReinier
+--main = putStrLn $ unlines $ map showInstruction $ compileProgram programReinier
 
 -- Runs the simulation
 --runSim :: IO ()

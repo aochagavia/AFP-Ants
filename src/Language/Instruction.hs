@@ -5,8 +5,11 @@ module Language.Instruction (
     SenseDir(..),
     LeftOrRight(..),
     Condition(..),
-    Instruction(..)
+    Instruction(..),
+    showInstruction,
     ) where
+
+import Data.List (intercalate)
 
 type AntState = Int -- 0..9999
 type MarkerNumber = Int -- 0..5
@@ -35,7 +38,7 @@ data Condition
     | FoeMarker
     | Home
     | FoeHome
-    deriving (Show, Eq)
+    deriving (Eq, Show)
 
 data Instruction
     = Sense SenseDir AntState AntState Condition
@@ -46,4 +49,9 @@ data Instruction
     | Turn LeftOrRight AntState
     | Move AntState AntState
     | Flip InvChance AntState AntState
-    deriving (Show, Eq)
+    deriving (Eq, Show)
+
+
+showInstruction :: Instruction -> String
+showInstruction (Sense dir a1 a2 c) = intercalate " " ["Sense", show dir, show a1, show a2, show c]
+showInstruction x = show x
