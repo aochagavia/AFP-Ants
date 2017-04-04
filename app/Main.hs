@@ -9,19 +9,22 @@ import Language.Fragment
 import Simulator.Options
 import Simulator.Runner
 import qualified Worlds
+import Language.Function
+import qualified Language.Instruction as I
 
 -- Dumps the compiled program to stdout
 main :: IO ()
-main = print (length (compileProgram programReinier))
+--main = print (length (compileProgram programReinier))
 --main = putStrLn $ unlines $ map show $ compileProgram programReinier
 
 -- Runs the simulation
-runSim :: IO ()
-runSim = let red = fragmentProgram
-             black = antProgram
-             world = Worlds.sample0
-             options = buildOptions <$> red <*> black <*> world <*> pure 100000
-         in options >>= simulate
+--runSim :: IO ()
+main =
+  let  red = fragmentProgram
+       black = antProgram
+       world = Worlds.sample0
+       options = buildOptions <$> red <*> black <*> world <*> pure 100000
+  in options >>= simulate
 
 program :: ProgramBuilder ()
 program = do
@@ -43,3 +46,31 @@ program = do
 
     -- Entry point
     setEntryPoint start
+
+programDaan :: ProgramBuilder ()
+programDaan = do
+  start      <- declare
+  pickupFood <- declare
+  --search     <- declare
+  --rSearch    <- declare
+  goHome     <- declare
+  notHome    <- declare
+  foundHome  <- declare
+  --rwalkbase  <- randomWalkUntilBaseFound
+  rwalkfood  <- randomWalkUntilFoodFound pickupFood
+
+  -- Bodies
+  start      `defineAs` rwalkfood
+  --start      `defineAs` Sense Ahead pickupFood search (Cond Food)
+  pickupFood `defineAs` Move (PickUp goHome start) start
+  --search     `defineAs` Flip 3 (Turn Left start) (Flip 2 (Turn Right start) (Move start rSearch))
+  --rSearch    `defineAs` rwalkbase
+  goHome     `defineAs` Sense Ahead foundHome notHome (Cond Home)
+  notHome    `defineAs` Flip 3 (Turn Left goHome) (Flip 2 (Turn Right goHome) (Move goHome notHome))
+  foundHome  `defineAs` Move (Drop start) goHome
+
+  -- Entry point
+  setEntryPoint start
+
+fragmentProgramDaan :: [I.Instruction]
+fragmentProgramDaan = compileProgram programDaan

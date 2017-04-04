@@ -22,6 +22,12 @@ sequenceF (f:fs) = \ret -> do
         nextFn <- sequenceF fs ret
         f nextFn
 
+
+chooseCond :: [CondFunction] -> CondFunction
+chooseCond []       _     _      = error "cannot choose 0"
+chooseCond [f]      true  false  = choose [f true] false
+chooseCond choices  true  false  = choose (map (\y -> y true) choices) false
+
 -- Combine the functions in such a way that, at runtime, one of them is run randomly
 choose :: [Function] -> Function
 choose [] _ = error "cannot choose 0 functions"
@@ -40,6 +46,9 @@ choose choices@(f:fs) nextIns = let count = length choices in
 -- Functions to make turning and sensing easier
 
 data Directions = LeftLeft | DirLeft | DirAhead | DirRight | RightRight | Back
+
+directions :: [Directions]
+directions = [LeftLeft, DirLeft, DirAhead, DirRight, RightRight, Back]
 
 turn :: Directions -> Function
 turn dir nextIns = define (turn' dir nextIns)
@@ -68,16 +77,35 @@ senseDir dir cond trueIns falseIns = define (senseDir' dir cond trueIns falseIns
 
 {- Example functions -}
 
-walkUntilBaseFound, walkUntilFoodFound :: Function
+randomDirection :: Function
+randomDirection = choose $ map turn directions
+
+walkUntilBaseFound, walkUntilFoodFound :: CondFunction
 walkUntilBaseFound = walkUntilCond (Cond Home)
 walkUntilFoodFound = walkUntilCond (Cond Food)
 
-walkUntilCond :: BoolExpr -> Function
-walkUntilCond cond ret = do
-    start <- declare
-    walk <- declare
-    start `defineAs` Sense Here ret walk cond
-    walk `defineAs` Move start walk -- warning don't use these functions (ants get locked against walls)
+randomWalkUntilBaseFound :: Function
+randomWalkUntilBaseFound ret = do
+  random    <- declare
+  randomDir <- randomDirection random
+  walk      <- walkUntilBaseFound ret randomDir
+  random    `defineAs` walk
+  return random
+
+randomWalkUntilFoodFound :: Function
+randomWalkUntilFoodFound ret = do
+  random    <- declare
+  randomDir <- randomDirection random
+  walk      <- walkUntilFoodFound ret randomDir
+  random    `defineAs` walk
+  return random
+
+walkUntilCond :: BoolExpr -> CondFunction
+walkUntilCond cond true false = do
+    start   <- declare
+    walk    <- declare
+    start   `defineAs`  Sense Here true walk cond
+    walk    `defineAs`  Move start false
     return start
 
 turnAround :: Function

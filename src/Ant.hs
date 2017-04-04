@@ -31,7 +31,13 @@ programReinier = do
     selectCircle4   <- declare
 
     --- Collector ---
-    collector       <- declare
+    collectorFind   <- declare
+    otherFind       <- declare
+    foodFind        <- declare
+    foodLost        <- declare
+    blockedFind     <- declare
+    collectorFound  <- declare
+    blockedFound    <- declare
     -- enter with food
     enter0          <- declare
     enter0Scan      <- declare
@@ -111,7 +117,16 @@ programReinier = do
     -}
 
     --- Collector ---
-    collector       `execute`  turn Back enter0
+    -- search
+    collectorFind   `defineAs` Sense Ahead foodFind otherFind food -- turn Back enter0
+    otherFind       `defineAs` Sense Ahead blockedFind (Move collectorFind blockedFind) home
+    foodFind        `defineAs` Move (PickUp collectorFound foodLost) blockedFind
+    foodLost        `execute`  turnCond Left food foodFind blockedFind
+    blockedFind     `execute`  randomDirection collectorFind
+    -- return
+    collectorFound  `defineAs` Sense Ahead enter0 (Move collectorFound blockedFound) home
+    blockedFound    `execute`  randomDirection collectorFound
+
     -- Enter home after food found
     --  Dont close in to centre when you can scan another ant with food there
     enter0          `defineAs` Sense Ahead enter0Scan (Turn Right enter0) (marker 0)
@@ -140,7 +155,7 @@ programReinier = do
     exit1           `defineAs` Sense Ahead exit1Move (Turn Right exit1) (And (marker 0) noAnts)
     exit1Move       `defineAs` Move exit0 exit1 -- Wait for a free location in circle 0
     exit0           `defineAs` Sense Ahead exit0Move (Turn Right exit0) (And notHome noAnts)
-    exit0Move       `defineAs` Move collector exit0 -- Wait for a free location in outside of your home
+    exit0Move       `defineAs` Move collectorFind exit0 -- Wait for a free location in outside of your home
 
     --- Defender ---
     -- patrols clockwise on patches 3
