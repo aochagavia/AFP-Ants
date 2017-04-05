@@ -69,7 +69,17 @@ programReinier = do
     exit1Move       <- declare
     exit0           <- declare
     exit0Move       <- declare
+    exitInner       <- declare
+    exitInnerMove   <- declare
+    exitOuter       <- declare
+    exitOuterMove   <- declare
 
+    -- base marking
+    antOn0          <- declare
+    antOn0Move      <- declare
+    antInner        <- declare
+    antOuter        <- declare
+    testOuter       <- declare
 
     --- Initial Explorer ---
     searchPathHome <- declare
@@ -111,12 +121,12 @@ programReinier = do
     -}
 
     --- Initial Explorer ---
-    drawRegularForwardPath1 `defineAs` Move (Mark 1 (drawRegularForwardPath2)) (searchPathHome)
-    drawRegularForwardPath2 `defineAs` Move (Mark 2 (drawRegularForwardPath3)) (searchPathHome)
-    drawRegularForwardPath3 `defineAs` Move (Mark 3 (drawRegularForwardPath1)) (searchPathHome)
+    drawRegularForwardPath1 `defineAs` Move (Mark 1 drawRegularForwardPath2) searchPathHome
+    drawRegularForwardPath2 `defineAs` Move (Mark 2 drawRegularForwardPath3) searchPathHome
+    drawRegularForwardPath3 `defineAs` Move (Mark 3 drawRegularForwardPath1) searchPathHome
 
     searchPathHome `execute` randomWalkUntilCondition homePathMarker walkToHome
-    walkToHome `defineAs` Sense Here turnHomewards1 ((Sense Here turnHomewards2 turnHomewards3 (marker 2))) (marker 1)
+    walkToHome `defineAs` Sense Here turnHomewards1 (Sense Here turnHomewards2 turnHomewards3 (marker 2)) (marker 1)
 
     turnHomewards1 `execute` turnUntil Right (marker 3) (Move walkToHome walkHome)
     turnHomewards2 `execute` turnUntil Right (marker 1) (Move walkToHome walkHome)
@@ -128,20 +138,31 @@ programReinier = do
     cornerScan      `defineAs` Sense RightAhead (Turn Right cornerScan) foodPlace notHome
     foodPlace       `defineAs` Turn Left (Sense LeftAhead (Mark 5 guardLeft) scanGuard notHome)
     guardLeft       `defineAs` Move (Mark 1 (Turn Left (Turn Left forceMove))) guardLeft
-    forceMove       `defineAs` Move error forceMove
+    forceMove       `defineAs` Move (Mark 0 (Mark 4 error)) forceMove
     scanGuard       `execute`  turnCond Left (marker 5) (Mark 4 error) guardScan
-    guardScan       `execute`  turnCond Left (marker 4) (Sense RightAhead (Turn Right guardRight) exit0 notHome) exit0
-    guardRight      `defineAs` Move (Mark 1 (Turn Left forceMove)) guardRight
+    guardScan       `execute`  turnCond Left (marker 4) (Sense RightAhead (Turn Right guardRight) antOn0 notHome) antOn0
+    guardRight      `defineAs` Move (Mark 0 (Turn Left forceMove)) guardRight
 
     --- guard that gets exchanged ---
     cornerScan1     `defineAs` Sense RightAhead (Turn Right cornerScan1) changeGuard (marker 0)
     changeGuard     `defineAs` Turn Left (Sense Ahead (Mark 5 guardBehind) exit1 (And (marker 0) (marker 5)))
     guardBehind     `defineAs` Sense Ahead change guardBehind friend
-    change          `defineAs` Turn Left (Turn Left (Move (Turn Right (Move exit0 exit1)) exit1))
+    change          `defineAs` Turn Left (Turn Left (Move (Turn Right (Move antOn0 exit1)) exit1))
 
     --- drop food and exchange the guard ---
     onFoodPlace     `defineAs` Drop (Move changingGuard onFoodPlace)
     changingGuard   `execute`  turn Back guardBehind
+
+    --- base marking ---
+    -- two circles around base
+    -- inner circle uses mark 0
+    -- outer circle uses mark 5
+    -- fooddrop uses mark 1
+    antOn0          `defineAs` Sense RightAhead antOn0Move (Turn Right antOn0) home
+    antOn0Move      `defineAs` Sense Ahead (Move (Mark 0 antInner) error) antOn0 notHome
+    antInner        `defineAs` Turn Left (Turn Left (Move (Mark 0 (Turn Right (Move (Mark 5 (Turn Left antOuter)) error))) error))
+    antOuter        `defineAs` Sense LeftAhead (Move (Mark 5 antOuter) testOuter) (Turn Left antOuter) (Or (marker 0) (marker 1))
+    testOuter       `defineAs` Sense Ahead (Turn Right drawRegularForwardPath3) antOuter (marker 5)
 
     --- Collector ---
     -- search
@@ -165,8 +186,13 @@ programReinier = do
     exit2Move       `defineAs` Move exit1 exit2 -- Wait for a free location in circle 1
     exit1           `defineAs` Sense Ahead exit1Move (Turn Right exit1) (And (marker 0) noAnts)
     exit1Move       `defineAs` Move exit0 exit1 -- Wait for a free location in circle 0
-    exit0           `defineAs` Sense Ahead exit0Move (Turn Right exit0) (And notHome noAnts)
-    exit0Move       `defineAs` Move drawRegularForwardPath3 exit0 -- Wait for a free location in outside of your home
+    exit0           `defineAs` Sense Ahead exit0Move (Turn Right exit0) (And (And notHome (marker 0)) noAnts)
+    exit0Move       `defineAs` Move exitInner exit0 -- Wait for a free location in inner ring
+    exitInner       `defineAs` Sense Ahead exitInnerMove (Turn Right exitInner) (And (marker 5) noAnts)
+    exitInnerMove   `defineAs` Move exitOuter exitInner -- Wait for a free location in outer ring
+
+    exitOuter       `defineAs` Sense Ahead exitOuterMove (Turn Right exitOuter) (And notHome noAnts)
+    exitOuterMove   `defineAs` Move error exit0 -- Wait for a free location in outside of your home
 
     --- Entry point ---
     setEntryPoint start

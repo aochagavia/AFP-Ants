@@ -53,5 +53,5 @@ data Instruction
 
 
 showInstruction :: Instruction -> String
-showInstruction (Sense dir a1 a2 c) = intercalate " " ["Sense", show dir, show a1, show a2, show c]
+showInstruction (Sense dir a1 a2 c) = unwords ["Sense", show dir, show a1, show a2, show c]
 showInstruction x = show x
