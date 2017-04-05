@@ -30,11 +30,19 @@ programReinier = do
     selectCircle3   <- declare
     selectCircle4   <- declare
 
-    -- guardLeft
+    -- guard
+    cornerScan      <- declare
     foodPlace       <- declare
     guardLeft       <- declare
     forceMove       <- declare
     scanGuard       <- declare
+    guardScan       <- declare
+    guardRight      <- declare
+
+    cornerScan2     <- declare
+    changeGuard     <- declare
+    guardBehind     <- declare
+    change          <- declare
 
     --- Collector ---
     collectorFind   <- declare
@@ -100,33 +108,44 @@ programReinier = do
 
     ----- Bodies -----
     start           `defineAs` selectCircle0
-    error           `defineAs` Drop error -- non reachable state -- infinite loop of nops
+    error           `defineAs` Drop error -- non reachable state -- infinite loop of nops -- ants that stand still
 
     --- init phase
-    selectCircle0   `execute`  turnCond Left notHome    (Mark 0 foodPlace)  selectCircle1
-    selectCircle1   `execute`  turnCond Left (marker 0) (Mark 1 exit1)      selectCircle2
-    selectCircle2   `execute`  turnCond Left (marker 1) (Mark 2 exit2)      selectCircle3
-    selectCircle3   `execute`  turnCond Left (marker 2) (Mark 3 exit3)      selectCircle4
-    selectCircle4   `execute`  turnCond Left (marker 3) (Mark 4 defender)   (Mark 5 cdefender)
+    selectCircle0   `execute`  turnCond Left notHome    (Mark 0 cornerScan)     selectCircle1
+    selectCircle1   `execute`  turnCond Left (marker 0) (Mark 1 cornerScan2)    selectCircle2
+    selectCircle2   `execute`  turnCond Left (marker 1) (Mark 2 exit2)          selectCircle3
+    selectCircle3   `execute`  turnCond Left (marker 2) (Mark 3 exit3)          selectCircle4
+    selectCircle4   `execute`  turnCond Left (marker 3) (Mark 4 defender)       (Mark 5 cdefender)
     {- Home looks like this (numbers are marks)
-     . . 0 0 0 0 0 0 . .
-    . . 0 1 1 1 1 1 0 . .
-     . 0 1 2 2 2 2 1 0 .
-    . 0 1 2 3 3 3 2 1 0 .
-     0 1 2 3 4 4 3 2 1 0
-    0 1 2 3 4 5 4 3 2 1 0
-     0 1 2 3 4 4 3 2 1 0
-    . 0 1 2 3 3 3 2 1 0 .
-     . 0 1 2 2 2 2 1 0 .
-    . . 0 1 1 1 1 1 0 . .
-     . . 0 0 0 0 0 0 . .
+    . . . . . . . . . . . . .
+     . . . 0 0 0 0 0 0 . . .
+    . . . 0 1 1 1 1 1 0 . . .
+     . . 0 1 2 2 2 2 1 0 . .
+    . . 0 1 2 3 3 3 2 1 0 . .
+     . 0 1 2 3 4 4 3 2 1 0 .
+    . 0 1 2 3 4 5 4 3 2 1 0 .
+     . 0 1 2 3 4 4 3 2 1 0 .
+    . . 0 1 2 3 3 3 2 1 0 . .
+     . . 0 1 2 2 2 2 1 0 . .
+    . . . 0 1 1 1 1 1 0 . . .
+     . . . 0 0 0 0 0 0 . . .
+    . . . . . . . . . . . . .
     -}
 
     --- food place to guardLeft ---
+    cornerScan      `defineAs` Sense RightAhead (Turn Right cornerScan) foodPlace notHome
     foodPlace       `defineAs` Turn Left (Sense LeftAhead (Mark 5 guardLeft) scanGuard notHome)
     guardLeft       `defineAs` Move (Mark 1 (Turn Left (Turn Left forceMove))) guardLeft
     forceMove       `defineAs` Move error forceMove
-    scanGuard       `execute`  turnCond Left (marker 5) error exit0
+    scanGuard       `execute`  turnCond Left (marker 5) (Mark 4 error) guardScan
+    guardScan       `execute`  turnCond Left (marker 4) (Sense RightAhead (Turn Right guardRight) exit0 notHome) exit0
+    guardRight      `defineAs` Move (Mark 1 (Turn Left forceMove)) guardRight
+
+    --- guard that gets exchanged ---
+    cornerScan2     `defineAs` Sense RightAhead (Turn Right cornerScan2) changeGuard (marker 0)
+    changeGuard     `defineAs` Turn Left (Sense Ahead (Mark 5 guardBehind) exit1 (And (marker 0) (marker 5)))
+    guardBehind     `defineAs` Sense Ahead change guardBehind friend
+    change          `defineAs` Turn Left (Turn Left (Move (Turn Right (Move exit0 exit1)) exit1))
 
     --- Collector ---
     -- search

@@ -16,16 +16,16 @@ import qualified Language.Instruction as I
 -- Dumps the compiled program to stdout
 main :: IO ()
 --main = print (length (compileProgram programReinier))
---main = putStrLn $ unlines $ map showInstruction $ compileProgram programReinier
+main = putStrLn $ unlines $ map showInstruction $ compileProgram programReinier
 
 -- Runs the simulation
 --runSim :: IO ()
-main =
-  let  red = fragmentProgram
-       black = antProgram
-       world = Worlds.sample0
-       options = buildOptions <$> red <*> black <*> world <*> pure 100000
-  in options >>= simulate
+--main =
+--  let  red = fragmentProgram
+--       black = antProgram
+--       world = Worlds.sample0
+--       options = buildOptions <$> red <*> black <*> world <*> pure 100000
+--  in options >>= simulate
 
 program :: ProgramBuilder ()
 program = do
