@@ -84,21 +84,19 @@ walkUntilBaseFound, walkUntilFoodFound :: CondFunction
 walkUntilBaseFound = walkUntilCond (Cond Home)
 walkUntilFoodFound = walkUntilCond (Cond Food)
 
-randomWalkUntilBaseFound :: Function
-randomWalkUntilBaseFound ret = do
+randomWalkUntilCondition :: BoolExpr -> Function
+randomWalkUntilCondition cond ret = do
   random    <- declare
   randomDir <- randomDirection random
-  walk      <- walkUntilBaseFound ret randomDir
+  walk      <- walkUntilCond cond ret randomDir
   random    `defineAs` walk
   return random
 
+randomWalkUntilBaseFound :: Function
+randomWalkUntilBaseFound = randomWalkUntilCondition (Cond Home)
+
 randomWalkUntilFoodFound :: Function
-randomWalkUntilFoodFound ret = do
-  random    <- declare
-  randomDir <- randomDirection random
-  walk      <- walkUntilFoodFound ret randomDir
-  random    `defineAs` walk
-  return random
+randomWalkUntilFoodFound = randomWalkUntilCondition (Cond Food)
 
 walkUntilCond :: BoolExpr -> CondFunction
 walkUntilCond cond true false = do
