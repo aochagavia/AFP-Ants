@@ -97,6 +97,14 @@ programReinier = do
     findPath4 <- declare
     findPath5 <- declare
 
+    --- walk on food trail ---
+    checkFoodTrail <- declare
+    walkToFood <- declare
+    turnTowardsFood3 <- declare
+    turnTowardsFood4 <- declare
+    turnTowardsFood5 <- declare
+    foodAtEndOfPath <- declare
+
     ----- Bodies -----
     start           `defineAs` selectCircle0
     error           `defineAs` Drop error -- non reachable state -- infinite loop of nops -- ants that stand still
@@ -158,7 +166,8 @@ programReinier = do
     changingGuard   `execute`  turn Back guardBehind
 
     --- alternative collector ---
-    collectorFind'  `defineAs` Sense Ahead foundFood' (Move collectorFind' blockedFind') food
+    checkFoodTrail  `defineAs` Sense Ahead walkToFood collectorFind' foodPathMarker
+    collectorFind'  `defineAs` Sense Ahead foundFood' (Move checkFoodTrail blockedFind') food
     foundFood'      `defineAs` Move (PickUp pickedUpFood' foodLost') blockedFind'
     foodLost'       `execute` turnCond Left food foundFood' blockedFind'
     blockedFind'    `execute` randomDirection collectorFind'
@@ -169,6 +178,12 @@ programReinier = do
     findPath4 `defineAs` Sense Ahead (Mark 4 (Move (Mark 3 walkToHome) searchPathHome)) (Mark 4 (Move findPath3 (Turn Left (findPath4)))) homePathMarker
     findPath5 `defineAs` Sense Ahead (Mark 5 (Move (Mark 4 walkToHome) searchPathHome)) (Mark 5 (Move findPath4 (Turn Left (findPath5)))) homePathMarker
 
+    --- Walk on food trail ---
+    walkToFood `defineAs` Sense Here turnTowardsFood3 ((Sense Here turnTowardsFood4 turnTowardsFood5 (marker 4))) (marker 3)
+    turnTowardsFood3 `execute` turnUntil Right (marker 4) (Move foodAtEndOfPath collectorFind')
+    turnTowardsFood4 `execute` turnUntil Right (marker 5) (Move foodAtEndOfPath collectorFind')
+    turnTowardsFood5 `execute` turnUntil Right (marker 3) (Move foodAtEndOfPath collectorFind')
+    foodAtEndOfPath `defineAs` Sense Here foundFood' walkToFood food
 
     --- Collector ---
     -- search
@@ -203,6 +218,9 @@ marker = Cond . Marker
 
 homePathMarker :: BoolExpr
 homePathMarker = Or (Or (marker 2) (marker 1)) (marker 0)
+
+foodPathMarker :: BoolExpr
+foodPathMarker = Or (Or (marker 3) (marker 4)) (marker 5)
 
 foe, foeWithFood, friend, friendWithFood, enemyAnts, friendlyAnts, ants, noAnts, food, foodOrAnts, foodNoAnts, home, notHome :: BoolExpr
 foe             = Cond Foe
