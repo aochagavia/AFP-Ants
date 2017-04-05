@@ -1,7 +1,6 @@
 module Ant (
     fragmentProgram,
-    programReinier,
-    programOr
+    programReinier
 ) where
 
 import Prelude hiding (Either(..))
@@ -45,8 +44,8 @@ programReinier = do
     guardBehind     <- declare
     change          <- declare
 
-    --onFoodPlace     <- declare
-    --changingGuard   <- declare
+    onFoodPlace     <- declare
+    changingGuard   <- declare
 
     --- Collector ---
     --collectorFind   <- declare
@@ -54,7 +53,7 @@ programReinier = do
     --foodFind        <- declare
     --foodLost        <- declare
     --blockedFind     <- declare
-    --collectorFound  <- declare
+    collectorFound  <- declare
     --blockedFound    <- declare
 
     -- exit without food
@@ -86,17 +85,14 @@ programReinier = do
     turnHomewards2 <- declare
 
 
-        --- alternative collector ---
-        -- search
-
-
+    --- alternative collector ---
     collectorFind'  <- declare
     foundFood'      <- declare
     foodLost'       <- declare
     blockedFind'     <- declare
     pickedUpFood'   <- declare
 
-        --- Create food trail ---
+    --- Create food trail ---
     findPath3 <- declare
     findPath4 <- declare
     findPath5 <- declare
@@ -129,19 +125,18 @@ programReinier = do
 
     --- Initial Explorer ---
     drawRegularForwardPath0 `defineAs` Move (Mark 0 (drawRegularForwardPath1)) (collectorFind')
-    drawRegularForwardPath1 `defineAs` Move (Mark 1 (drawRegularForwardPath2)) (searchPathHome)
+    drawRegularForwardPath1 `defineAs` Move (Mark 1 (drawRegularForwardPath2)) (collectorFind')
     drawRegularForwardPath2 `defineAs` Move (Mark 2 (drawRegularForwardPath0)) (searchPathHome)
 
     searchPathHome `execute` randomWalkUntilCondition homePathMarker walkToHome
+    collectorFound `defineAs` Sense Ahead (Move onFoodPlace collectorFound) walkToHome (And home (And (marker 5) (marker 0)))
     walkToHome `defineAs` Sense Here turnHomewards0 ((Sense Here turnHomewards1 turnHomewards2 (marker 1))) (marker 0)
 
-    turnHomewards0 `execute` turnUntil Right (marker 2) (Move walkToHome walkHome)
-    turnHomewards1 `execute` turnUntil Right (marker 0) (Move walkToHome walkHome)
-    turnHomewards2 `execute` turnUntil Right (marker 1) (Move walkToHome walkHome)
+    turnHomewards0 `execute` turnUntil Right (marker 2) (Move collectorFound walkHome)
+    turnHomewards1 `execute` turnUntil Right (marker 0) (Move collectorFound walkHome)
+    turnHomewards2 `execute` turnUntil Right (marker 1) (Move collectorFound walkHome)
 
     walkHome `execute` walkUntilBaseFound collectorFind' walkHome
-
-
 
     --- guards ---
     cornerScan      `defineAs` Sense RightAhead (Turn Right cornerScan) foodPlace notHome
@@ -159,12 +154,10 @@ programReinier = do
     change          `defineAs` Turn Left (Turn Left (Move (Turn Right (Move exit0 exit1)) exit1))
 
     --- drop food and exchange the guard ---
-    --onFoodPlace     `defineAs` Drop (Move changingGuard onFoodPlace)
-    --changingGuard   `execute`  turn Back guardBehind
+    onFoodPlace     `defineAs` Drop (Move changingGuard onFoodPlace)
+    changingGuard   `execute`  turn Back guardBehind
 
     --- alternative collector ---
-    -- search
-
     collectorFind'  `defineAs` Sense Ahead foundFood' (Move collectorFind' blockedFind') food
     foundFood'      `defineAs` Move (PickUp pickedUpFood' foodLost') blockedFind'
     foodLost'       `execute` turnCond Left food foundFood' blockedFind'
@@ -228,9 +221,3 @@ notHome         = Not home
 
 fragmentProgram :: [I.Instruction]
 fragmentProgram = compileProgram programReinier
-
-programOr :: ProgramBuilder ()
-programOr = do
-  start <- declare
-  start `defineAs` Sense Ahead (Turn Left start) (Turn Right start) homePathMarker
-  setEntryPoint start
