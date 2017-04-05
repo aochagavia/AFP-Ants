@@ -181,7 +181,7 @@ programReinier = do
     -- outer circle uses mark 5
     -- fooddrop uses mark 1
     antOn0          `defineAs` Sense RightAhead antOn0Move (Turn Right antOn0) home
-    antOn0Move      `defineAs` Sense Ahead (Move (Mark 0 antInner) error) antOn0 notHome
+    antOn0Move      `defineAs` Sense Ahead (Move (Mark 0 antInner) error) (Turn Left antOn0) notHome
     antInner        `defineAs` Turn Left (Turn Left (Move (Mark 0 (Turn Right (Move (Mark 5 (Turn Left antOuter)) error))) error))
     antOuter        `defineAs` Sense LeftAhead (Move (Mark 5 antOuter) testOuter) (Turn Left antOuter) (Or (marker 0) (marker 1))
     testOuter       `defineAs` Sense Ahead (Turn Right drawRegularForwardPath0) antOuter (marker 5)
