@@ -70,6 +70,20 @@ programReinier = do
     exit0           <- declare
     exit0Move       <- declare
 
+
+    --- Initial Explorer ---
+    searchPathHome <- declare
+    walkHome <- declare
+    walkToHome <- declare
+
+    drawRegularForwardPath1 <- declare
+    drawRegularForwardPath2 <- declare
+    drawRegularForwardPath3 <- declare
+
+    turnHomewards1 <- declare
+    turnHomewards2 <- declare
+    turnHomewards3 <- declare
+
     ----- Bodies -----
     start           `defineAs` selectCircle0
     error           `defineAs` Drop error -- non reachable state -- infinite loop of nops -- ants that stand still
@@ -95,6 +109,20 @@ programReinier = do
      . . . 0 0 0 0 0 0 . . .
     . . . . . . . . . . . . .
     -}
+
+    --- Initial Explorer ---
+    drawRegularForwardPath1 `defineAs` Move (Mark 1 (drawRegularForwardPath2)) (searchPathHome)
+    drawRegularForwardPath2 `defineAs` Move (Mark 2 (drawRegularForwardPath3)) (searchPathHome)
+    drawRegularForwardPath3 `defineAs` Move (Mark 3 (drawRegularForwardPath1)) (searchPathHome)
+
+    searchPathHome `execute` randomWalkUntilCondition homePathMarker walkToHome
+    walkToHome `defineAs` Sense Here turnHomewards1 ((Sense Here turnHomewards2 turnHomewards3 (marker 2))) (marker 1)
+
+    turnHomewards1 `execute` turnUntil Right (marker 3) (Move walkToHome walkHome)
+    turnHomewards2 `execute` turnUntil Right (marker 1) (Move walkToHome walkHome)
+    turnHomewards3 `execute` turnUntil Right (marker 2) (Move walkToHome walkHome)
+
+    walkHome `execute` walkUntilBaseFound collectorFind walkHome
 
     --- guards ---
     cornerScan      `defineAs` Sense RightAhead (Turn Right cornerScan) foodPlace notHome
@@ -138,13 +166,16 @@ programReinier = do
     exit1           `defineAs` Sense Ahead exit1Move (Turn Right exit1) (And (marker 0) noAnts)
     exit1Move       `defineAs` Move exit0 exit1 -- Wait for a free location in circle 0
     exit0           `defineAs` Sense Ahead exit0Move (Turn Right exit0) (And notHome noAnts)
-    exit0Move       `defineAs` Move collectorFind exit0 -- Wait for a free location in outside of your home
+    exit0Move       `defineAs` Move drawRegularForwardPath3 exit0 -- Wait for a free location in outside of your home
 
     --- Entry point ---
     setEntryPoint start
 
 marker :: MarkerNumber -> BoolExpr
 marker = Cond . Marker
+
+homePathMarker :: BoolExpr
+homePathMarker = Or (Or (marker 2) (marker 3)) (marker 1)
 
 foe, foeWithFood, friend, friendWithFood, enemyAnts, friendlyAnts, ants, noAnts, food, foodOrAnts, foodNoAnts, home, notHome :: BoolExpr
 foe             = Cond Foe

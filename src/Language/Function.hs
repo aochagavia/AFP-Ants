@@ -65,6 +65,27 @@ turnCond lorr cond trueIns falseIns = define $ turnCond' 6
     where   turnCond' 0 = falseIns
             turnCond' n = Sense Ahead trueIns (Turn lorr (turnCond' (n - 1))) cond
 
+turnUntil :: LeftOrRight -> BoolExpr -> Function
+turnUntil lorr cond ret = do
+  sense <- declare
+  turn <- declare
+  sense `defineAs` Sense Ahead ret turn cond
+  turn `defineAs` Turn lorr sense
+  return sense
+
+{-turnUntil lorr cond ret = do
+  sense <- declare
+  sense `defineAs` Sense Ahead ret sense cond
+  move <- declare
+  move `defineAs` Sense
+  return sense-}
+
+
+--turnUntil lorr cond true = turnCond lorr (Not cond) (turnUntil lorr cond true) true
+--turnUntil lorr cond true = Sense Ahead true (turnUntil lorr cond true) cond
+
+--turnUntil lorr cond true = turnCond lorr (Not cond) (turnUntil lorr cond true) true
+
 senseDir :: Directions -> BoolExpr -> CondFunction
 senseDir dir cond trueIns falseIns = define (senseDir' dir cond trueIns falseIns)
     where   senseDir' :: Directions -> BoolExpr -> Fragment -> Fragment -> Fragment
