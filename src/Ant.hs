@@ -1,6 +1,7 @@
 module Ant (
     fragmentProgram,
-    programReinier
+    programReinier,
+    programOr
 ) where
 
 import Prelude hiding (Either(..))
@@ -44,17 +45,17 @@ programReinier = do
     guardBehind     <- declare
     change          <- declare
 
-    onFoodPlace     <- declare
-    changingGuard   <- declare
+    --onFoodPlace     <- declare
+    --changingGuard   <- declare
 
     --- Collector ---
-    collectorFind   <- declare
-    otherFind       <- declare
-    foodFind        <- declare
-    foodLost        <- declare
-    blockedFind     <- declare
-    collectorFound  <- declare
-    blockedFound    <- declare
+    --collectorFind   <- declare
+    --otherFind       <- declare
+    --foodFind        <- declare
+    --foodLost        <- declare
+    --blockedFind     <- declare
+    --collectorFound  <- declare
+    --blockedFound    <- declare
 
     -- exit without food
     exit5           <- declare
@@ -76,13 +77,29 @@ programReinier = do
     walkHome <- declare
     walkToHome <- declare
 
+    drawRegularForwardPath0 <- declare
     drawRegularForwardPath1 <- declare
     drawRegularForwardPath2 <- declare
-    drawRegularForwardPath3 <- declare
 
+    turnHomewards0 <- declare
     turnHomewards1 <- declare
     turnHomewards2 <- declare
-    turnHomewards3 <- declare
+
+
+        --- alternative collector ---
+        -- search
+
+
+    collectorFind'  <- declare
+    foundFood'      <- declare
+    foodLost'       <- declare
+    blockedFind'     <- declare
+    pickedUpFood'   <- declare
+
+        --- Create food trail ---
+    findPath3 <- declare
+    findPath4 <- declare
+    findPath5 <- declare
 
     ----- Bodies -----
     start           `defineAs` selectCircle0
@@ -111,18 +128,20 @@ programReinier = do
     -}
 
     --- Initial Explorer ---
+    drawRegularForwardPath0 `defineAs` Move (Mark 0 (drawRegularForwardPath1)) (collectorFind')
     drawRegularForwardPath1 `defineAs` Move (Mark 1 (drawRegularForwardPath2)) (searchPathHome)
-    drawRegularForwardPath2 `defineAs` Move (Mark 2 (drawRegularForwardPath3)) (searchPathHome)
-    drawRegularForwardPath3 `defineAs` Move (Mark 3 (drawRegularForwardPath1)) (searchPathHome)
+    drawRegularForwardPath2 `defineAs` Move (Mark 2 (drawRegularForwardPath0)) (searchPathHome)
 
     searchPathHome `execute` randomWalkUntilCondition homePathMarker walkToHome
-    walkToHome `defineAs` Sense Here turnHomewards1 ((Sense Here turnHomewards2 turnHomewards3 (marker 2))) (marker 1)
+    walkToHome `defineAs` Sense Here turnHomewards0 ((Sense Here turnHomewards1 turnHomewards2 (marker 1))) (marker 0)
 
-    turnHomewards1 `execute` turnUntil Right (marker 3) (Move walkToHome walkHome)
+    turnHomewards0 `execute` turnUntil Right (marker 2) (Move walkToHome walkHome)
+    turnHomewards1 `execute` turnUntil Right (marker 0) (Move walkToHome walkHome)
     turnHomewards2 `execute` turnUntil Right (marker 1) (Move walkToHome walkHome)
-    turnHomewards3 `execute` turnUntil Right (marker 2) (Move walkToHome walkHome)
 
-    walkHome `execute` walkUntilBaseFound collectorFind walkHome
+    walkHome `execute` walkUntilBaseFound collectorFind' walkHome
+
+
 
     --- guards ---
     cornerScan      `defineAs` Sense RightAhead (Turn Right cornerScan) foodPlace notHome
@@ -140,19 +159,34 @@ programReinier = do
     change          `defineAs` Turn Left (Turn Left (Move (Turn Right (Move exit0 exit1)) exit1))
 
     --- drop food and exchange the guard ---
-    onFoodPlace     `defineAs` Drop (Move changingGuard onFoodPlace)
-    changingGuard   `execute`  turn Back guardBehind
+    --onFoodPlace     `defineAs` Drop (Move changingGuard onFoodPlace)
+    --changingGuard   `execute`  turn Back guardBehind
+
+    --- alternative collector ---
+    -- search
+
+    collectorFind'  `defineAs` Sense Ahead foundFood' (Move collectorFind' blockedFind') food
+    foundFood'      `defineAs` Move (PickUp pickedUpFood' foodLost') blockedFind'
+    foodLost'       `execute` turnCond Left food foundFood' blockedFind'
+    blockedFind'    `execute` randomDirection collectorFind'
+    pickedUpFood'   `defineAs` findPath5
+
+    --- Create food trail ---
+    findPath3 `defineAs` Sense Ahead (Mark 3 (Move (Mark 5 walkToHome) searchPathHome)) (Mark 3 (Move findPath5 (Turn Left (findPath3)))) homePathMarker
+    findPath4 `defineAs` Sense Ahead (Mark 4 (Move (Mark 3 walkToHome) searchPathHome)) (Mark 4 (Move findPath3 (Turn Left (findPath4)))) homePathMarker
+    findPath5 `defineAs` Sense Ahead (Mark 5 (Move (Mark 4 walkToHome) searchPathHome)) (Mark 5 (Move findPath4 (Turn Left (findPath5)))) homePathMarker
+
 
     --- Collector ---
     -- search
-    collectorFind   `defineAs` Sense Ahead foodFind otherFind food -- turn Back enter0
-    otherFind       `defineAs` Sense Ahead blockedFind (Move collectorFind blockedFind) home
-    foodFind        `defineAs` Move (PickUp collectorFound foodLost) blockedFind
-    foodLost        `execute`  turnCond Left food foodFind blockedFind
-    blockedFind     `execute`  randomDirection collectorFind
+    --collectorFind   `defineAs` Sense Ahead foodFind otherFind food -- turn Back enter0
+    --otherFind       `defineAs` Sense Ahead blockedFind (Move collectorFind blockedFind) home
+    --foodFind        `defineAs` Move (PickUp collectorFound foodLost) blockedFind
+    --foodLost        `execute`  turnCond Left food foodFind blockedFind
+    --blockedFind     `execute`  randomDirection collectorFind
     -- return
-    collectorFound  `defineAs` Sense Ahead (Move onFoodPlace collectorFound) (Move collectorFound blockedFound) (And home (And (marker 5) (marker 0)))
-    blockedFound    `execute`  randomDirection collectorFound
+    --collectorFound  `defineAs` Sense Ahead (Move onFoodPlace collectorFound) (Move collectorFound blockedFound) (And home (And (marker 5) (marker 0)))
+    --blockedFound    `execute`  randomDirection collectorFound
 
     -- Exit home after food dropped or after start
     exit5           `defineAs` Sense Ahead exit5Move (Turn Right exit5) (And (marker 4) noAnts)
@@ -166,7 +200,7 @@ programReinier = do
     exit1           `defineAs` Sense Ahead exit1Move (Turn Right exit1) (And (marker 0) noAnts)
     exit1Move       `defineAs` Move exit0 exit1 -- Wait for a free location in circle 0
     exit0           `defineAs` Sense Ahead exit0Move (Turn Right exit0) (And notHome noAnts)
-    exit0Move       `defineAs` Move drawRegularForwardPath3 exit0 -- Wait for a free location in outside of your home
+    exit0Move       `defineAs` Move drawRegularForwardPath0 exit0 -- Wait for a free location in outside of your home
 
     --- Entry point ---
     setEntryPoint start
@@ -175,7 +209,7 @@ marker :: MarkerNumber -> BoolExpr
 marker = Cond . Marker
 
 homePathMarker :: BoolExpr
-homePathMarker = Or (Or (marker 2) (marker 3)) (marker 1)
+homePathMarker = Or (Or (marker 2) (marker 1)) (marker 0)
 
 foe, foeWithFood, friend, friendWithFood, enemyAnts, friendlyAnts, ants, noAnts, food, foodOrAnts, foodNoAnts, home, notHome :: BoolExpr
 foe             = Cond Foe
@@ -194,3 +228,9 @@ notHome         = Not home
 
 fragmentProgram :: [I.Instruction]
 fragmentProgram = compileProgram programReinier
+
+programOr :: ProgramBuilder ()
+programOr = do
+  start <- declare
+  start `defineAs` Sense Ahead (Turn Left start) (Turn Right start) homePathMarker
+  setEntryPoint start
