@@ -195,12 +195,12 @@ programReinier = do
     pickedUpFood'   `defineAs` findPath5
 
     --- Create food trail ---
-    findPath3 `defineAs` Sense Ahead (Mark 3 (Move (Mark 5 walkToHome) searchPathHome)) (Mark 3 (Move findPath5 (Turn Left (findPath3)))) homePathMarker
-    findPath4 `defineAs` Sense Ahead (Mark 4 (Move (Mark 3 walkToHome) searchPathHome)) (Mark 4 (Move findPath3 (Turn Left (findPath4)))) homePathMarker
-    findPath5 `defineAs` Sense Ahead (Mark 5 (Move (Mark 4 walkToHome) searchPathHome)) (Mark 5 (Move findPath4 (Turn Left (findPath5)))) homePathMarker
+    findPath3 `defineAs` Sense Ahead (Mark 3 (Move (Mark 5 walkToHome) searchPathHome)) (Mark 3 (Move findPath5 (Turn Left findPath3))) homePathMarker
+    findPath4 `defineAs` Sense Ahead (Mark 4 (Move (Mark 3 walkToHome) searchPathHome)) (Mark 4 (Move findPath3 (Turn Left findPath4))) homePathMarker
+    findPath5 `defineAs` Sense Ahead (Mark 5 (Move (Mark 4 walkToHome) searchPathHome)) (Mark 5 (Move findPath4 (Turn Left findPath5))) homePathMarker
 
     --- Walk on food trail ---
-    walkToFood `defineAs` Sense Here turnTowardsFood3 ((Sense Here turnTowardsFood4 turnTowardsFood5 (marker 4))) (marker 3)
+    walkToFood `defineAs` Sense Here turnTowardsFood3 (Sense Here turnTowardsFood4 turnTowardsFood5 (marker 4)) (marker 3)
     turnTowardsFood3 `execute` turnUntil Right (marker 4) (Move foodAtEndOfPath collectorFind')
     turnTowardsFood4 `execute` turnUntil Right (marker 5) (Move foodAtEndOfPath collectorFind')
     turnTowardsFood5 `execute` turnUntil Right (marker 3) (Move foodAtEndOfPath collectorFind')
@@ -234,7 +234,7 @@ programReinier = do
     exitInnerMove   `defineAs` Move exitOuter exitInner -- Wait for a free location in outer ring
 
     exitOuter       `defineAs` Sense Ahead exitOuterMove (Turn Right exitOuter) (And (And (Not (marker 0)) (Not (marker 5))) noAnts)
-    exitOuterMove   `defineAs` Move drawRegularForwardPath0 exit0 -- Wait for a free location in outside of outer ring
+    exitOuterMove   `defineAs` Move (Mark 2 drawRegularForwardPath0) exitOuter -- Wait for a free location in outside of outer ring
 
 
     --- Entry point ---
