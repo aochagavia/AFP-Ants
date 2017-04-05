@@ -43,7 +43,14 @@ programReinier = do
     changeGuard     <- declare
     guardBehind     <- declare
     change          <- declare
+    randomWalkFromHome <- declare
 
+    outerRingFound  <- declare
+    scanOuterRing   <- declare
+    onOuterRing     <- declare
+    justBeforeDrop  <- declare
+    justBeforeDropCorner <- declare
+    beforeDrop      <- declare
     onFoodPlace     <- declare
     changingGuard   <- declare
 
@@ -150,7 +157,7 @@ programReinier = do
     collectorFound `defineAs` Sense Ahead (Move onFoodPlace collectorFound) walkToHome (And home (And (marker 5) (marker 0)))
     walkToHome `defineAs` Sense Here turnHomewards0 (Sense Here turnHomewards1 turnHomewards2 (marker 1)) (marker 0)
 
-    turnHomewards0 `execute` turnUntil Right (marker 2) (Move collectorFound walkHome)
+    turnHomewards0 `execute` turnUntil Right (marker 2) (Move (Sense Ahead outerRingFound collectorFound (marker 5)) walkHome)
     turnHomewards1 `execute` turnUntil Right (marker 0) (Move collectorFound walkHome)
     turnHomewards2 `execute` turnUntil Right (marker 1) (Move collectorFound walkHome)
 
@@ -169,9 +176,16 @@ programReinier = do
     cornerScan1     `defineAs` Sense RightAhead (Turn Right cornerScan1) changeGuard (marker 0)
     changeGuard     `defineAs` Turn Left (Sense Ahead (Mark 5 guardBehind) exit1 (And (marker 0) (marker 5)))
     guardBehind     `defineAs` Sense Ahead change guardBehind friend
-    change          `defineAs` Turn Left (Turn Left (Move (Turn Right (Move antOn0 exit1)) exit1))
+    change          `defineAs` Turn Left (Turn Left (Move exit1 (Turn Right (Turn Right (Turn Right (Turn Right (Move exit1 randomWalkFromHome)))))))
+    randomWalkFromHome `execute` randomWalkUntilCondition notHome exitInner
 
     --- drop food and exchange the guard ---
+    outerRingFound  `defineAs` Move onOuterRing scanOuterRing
+    scanOuterRing   `execute`  turnUntil Left (And noAnts (marker 5)) outerRingFound
+    onOuterRing     `execute`  turnUntil Left (marker 5) (Move (Sense RightAhead (Turn Right (Move beforeDrop justBeforeDrop)) onOuterRing (marker 1)) onOuterRing)
+    justBeforeDrop  `defineAs` Sense Ahead (Turn Left (Move (Turn Right (Turn Right justBeforeDropCorner)) (Turn Right justBeforeDrop))) justBeforeDrop enemyAnts
+    justBeforeDropCorner `defineAs` Move beforeDrop justBeforeDropCorner
+    beforeDrop      `execute`  turnUntil Right (And home (marker 5)) (Move onFoodPlace beforeDrop)
     onFoodPlace     `defineAs` Drop (Move changingGuard onFoodPlace)
     changingGuard   `execute`  turn Back guardBehind
 
@@ -181,8 +195,8 @@ programReinier = do
     -- outer circle uses mark 5
     -- fooddrop uses mark 1
     antOn0          `defineAs` Sense RightAhead antOn0Move (Turn Right antOn0) home
-    antOn0Move      `defineAs` Sense Ahead (Move (Mark 0 antInner) error) (Turn Left antOn0) notHome
-    antInner        `defineAs` Turn Left (Turn Left (Move (Mark 0 (Turn Right (Move (Mark 5 (Turn Left antOuter)) error))) error))
+    antOn0Move      `defineAs` Sense Ahead (Move (Mark 0 antInner) error) (Turn Left antOn0) notHome -- error is unreachable
+    antInner        `defineAs` Turn Left (Turn Left (Move (Mark 0 (Turn Right (Move (Mark 5 (Turn Left antOuter)) error))) error)) --error is unreachable
     antOuter        `defineAs` Sense LeftAhead (Move (Mark 5 antOuter) testOuter) (Turn Left antOuter) (Or (marker 0) (marker 1))
     testOuter       `defineAs` Sense Ahead (Turn Right drawRegularForwardPath0) antOuter (marker 5)
 
