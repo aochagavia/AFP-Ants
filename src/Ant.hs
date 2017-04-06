@@ -1,6 +1,6 @@
 module Ant (
     fragmentProgram,
-    programReinier
+    program
 ) where
 
 import Prelude hiding (Either(..))
@@ -15,8 +15,8 @@ import Language.Optimizer
 import qualified Language.Instruction as I
 import qualified Prelude as P
 
-programReinier :: ProgramBuilder ()
-programReinier = do
+program :: ProgramBuilder ()
+program = do
     ----- Definitions -----
     -- number of ants = 91
     -- number of circles = 6 (0..5)
@@ -221,15 +221,6 @@ programReinier = do
     foodAtEndOfPath `defineAs` Sense Here foundFood' walkToFood food
 
     --- Collector ---
-    -- search
-    --collectorFind   `defineAs` Sense Ahead foodFind otherFind food -- turn Back enter0
-    --otherFind       `defineAs` Sense Ahead blockedFind (Move collectorFind blockedFind) home
-    --foodFind        `defineAs` Move (PickUp collectorFound foodLost) blockedFind
-    --foodLost        `execute`  turnCond Left food foodFind blockedFind
-    --blockedFind     `execute`  randomDirection collectorFind
-    -- return
-    --collectorFound  `defineAs` Sense Ahead (Move onFoodPlace collectorFound) (Move collectorFound blockedFound) (And home (And (marker 5) (marker 0)))
-    --blockedFound    `execute`  randomDirection collectorFound
 
     -- Exit home after food dropped or after start
     exit5           `defineAs` Sense Ahead exit5Move (Turn Right exit5) (And (marker 4) noAnts)
@@ -279,4 +270,4 @@ home            = Cond Home
 notHome         = Not home
 
 fragmentProgram :: [I.Instruction]
-fragmentProgram = compileProgram programReinier
+fragmentProgram = compileProgram program

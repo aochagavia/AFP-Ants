@@ -13,8 +13,7 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib
-                     , Ant
+  exposed-modules:     Ant
                      , Language.Codegen
                      , Language.Compiler
                      , Language.Examples
@@ -22,14 +21,6 @@ library
                      , Language.Function
                      , Language.Instruction
                      , Language.Optimizer
-                     , Simulator
-                     , Simulator.GamePlay
-                     , Simulator.Options
-                     , Simulator.ReadWorld
-                     , Simulator.ReadInstructions
-                     , Simulator.Runner
-                     , Worlds
-  other-modules:       MultilineStrings
   build-depends:       base >= 4.7 && < 5
                      , array
                      , containers
