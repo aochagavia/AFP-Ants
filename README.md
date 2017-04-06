@@ -6,8 +6,7 @@
 
 ```
 > stack build
-> cd .stack-work/install/5df6cd37/bin
-> ./FunctionalAnts > intructions.ant 
+> stack exec FunctionalAnts-exe > intructions.ant
 ```
 
 The output of our executable is a text stream where each line corresponds
